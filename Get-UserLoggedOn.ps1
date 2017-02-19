@@ -4,14 +4,14 @@
     
     .DESCRIPTION
         Este Script busca en qué equipo esta logeado determinado usuario. Se pueden buscar mas de un usuario.
-        Para el parametro User, se debe utilizar si o si el SamAccountName del usuario. Este se puede encontrar haciendo una busqueda del usuario en el AD.
+        Para el parametro User, se debe utilizar si el SamAccountName del usuario. Este se puede encontrar haciendo una busqueda del usuario en el AD.
         El SamAccountName es el string que se utiliza para iniciar sesión en windows.
 
     .PARAMETER Identity
         Especifica nombre de usuario. Se utiliza el SamAccountName. Acepta mas de un usuario.
 
     .PARAMETER SearchBase
-        Especifica OU donde esten los equipos a realizar la busqueda. Por defecto esta configurado para que sea la OU Computers en la OU Zarcam
+        Especifica OU donde esten los equipos a realizar la busqueda.
 
     .EXAMPLE
         Get-UserLoggedOn -SamAccountName juan.parez,pablo.lopez
@@ -26,7 +26,6 @@
         Get-ADUser -Filter * -searchbase "ou=computers,ou=contoso,dc=contoso,dc=local" | Get-UserLoggedOn.ps1
         juan.parez encontrado en equipo: JUAN-PC
         pablo.lopez encontrado en equipo: PABLO-PC
-        damian.lara encontrado en equipo: DAMIAN
 
         Si se utiliza el comando por pipeline, no hace falta hacer un SELECT del SamAccountName. Automaticamente lo toma.
 
@@ -42,7 +41,8 @@
         
 
 #>
-
+#Requires -Module ActiveDirectory
+#Requires -RunAsAdministrator
 [CmdletBinding()]
 param ( 
         [parameter (Mandatory = $True, 
@@ -75,9 +75,8 @@ Get-ADComputer @Propertys | ForEach-Object {
             } 
         } # Close Foreach Users
     }   #Close Try instance
-    catch [System.UnauthorizedAccessException]
+    catch
     {
-         Write-Error "Requiere permisos administrador"
-         break
+        out-null
     }
 } #Close ForEach Computers

@@ -5,7 +5,7 @@ param (
     [String[]][Alias("Server")]
     $ComputerName
 )
-
+#Requires -RunAsAdministrator
 Begin {
     #Funcion para crear objetos
     function New-GUline {
