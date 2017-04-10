@@ -1,3 +1,16 @@
+<#
+    .SYNOPSIS
+
+    .DESCRIPTION
+
+    .PARAMETER alguno
+
+    .EXAMPLE
+
+    .NOTES
+
+#>
+
 [CmdletBinding()]
 
 param (
@@ -35,7 +48,7 @@ Process {
         Try {
             #Hace un query a cada equipo filtrando los grupos Administradores locales
             $Wmi = Get-WmiObject -class Win32_GroupUser -ComputerName $Computer -ErrorAction Stop |
-            Where-Object {  $_.groupcomponent -match '"Administra[t|d]or[a-z]{0,3}"$' -and $_.groupcomponent -notmatch "zarcam" }
+            Where-Object {  $_.groupcomponent -match '"Administra[t|d]or[a-z]{0,3}"$' -and $_.groupcomponent -match $Computer }
             $usuarios = @()
 
             $wmi | ForEach-Object {

@@ -17,55 +17,41 @@
         Get-UserLoggedOn -SamAccountName juan.parez,pablo.lopez
         pablo.lopez encontrado en equipo: PABLO-PC
         juan.parez encontrado en equipo: JUAN-PC
-    
-    .EXAMPLE 
-        Get-ADUser -Identity juan.parez | Get-UserLoggedOn.ps1
-        juan.parez encontrado en equipo: JUAN-PC
-    
-     .EXAMPLE
-        Get-ADUser -Filter * -searchbase "ou=computers,ou=contoso,dc=contoso,dc=local" | Get-UserLoggedOn.ps1
-        juan.parez encontrado en equipo: JUAN-PC
-        pablo.lopez encontrado en equipo: PABLO-PC
-
-        Si se utiliza el comando por pipeline, no hace falta hacer un SELECT del SamAccountName. Automaticamente lo toma.
-
-    .EXAMPLE
-        Get-UserLoggedOn -SamAccountName (Get-ADUser -filter * -searchbase "ou=computers,ou=contoso,dc=contoso,dc=local" ).samaccountname
-
-        Este ejemplo lo que hace es traer todos los usuarios dentro de la OU Administracion. Luego busca en que equipos estan logeados los mismos, si es que lo estan.
-        En este caso, si se debe especificar que tome el SamAccountName de los usuarios, ya que no se utiliza el comando por pipeline.
 
      .NOTES
         Requiere el modulo ActiveDirectory
-
-        
-
 #>
+
 #Requires -Module ActiveDirectory
 #Requires -RunAsAdministrator
+
 [CmdletBinding()]
 param ( 
-        [parameter (Mandatory = $True, 
+        [parameter (Mandatory, 
                     Position = 0,
-                    ValueFromPipeline=$True,
-                    ValueFromPipelineByPropertyName=$true)]
+                    ValueFromPipeline,
+                    ValueFromPipelineByPropertyName)]
         [Alias('SamAccountName')]
         [String[]]$Identity,
         $SearchBase
     )
 
 $Domain = (Get-ADDomain).Name
-#Probar esto ... el filtro y el searchbase (en caso de que no se ingrese)
-#Probar sin select y con $computer = $_.name (measure-command)
+
 $Propertys = @{ Filter = 'enabled -eq "True"'  }
+
 IF ($SearchBase) { $Propertys.SearchBase = $SearchBase  }
 
 Get-ADComputer @Propertys | ForEach-Object {
+
     $Computer = $_.Name
-    try 
+
+    try
     {
-        $ComputerInformation = Get-WmiObject -Class Win32_ComputerSystem -ComputerName $Computer -ErrorAction Stop
+        $ComputerInformation = Get-CimInstance -Class Win32_ComputerSystem -ComputerName $Computer -ErrorAction Stop
+
         $Username = $ComputerInformation.Username
+        
         foreach ($name in $Identity)
         {
             If ($Username -eq "$Domain\$name") 
@@ -73,10 +59,10 @@ Get-ADComputer @Propertys | ForEach-Object {
                 Write-Output "$name encontrado en equipo: $Computer"
                 break 
             } 
-        } # Close Foreach Users
-    }   #Close Try instance
+        }
+    }   
     catch
     {
         out-null
     }
-} #Close ForEach Computers
+} #

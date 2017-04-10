@@ -1,3 +1,15 @@
+<#
+    .SYNOPSIS
+
+    .DESCRIPTION
+
+    .PARAMETER alguno
+
+    .EXAMPLE
+
+    .NOTES
+
+#>
 [CmdletBinding()]
 param (
     [parameter(Position = 0)]
@@ -17,5 +29,5 @@ $Params = @{
 IF ($ComputerName -eq "Localhost" -or $ComputerName -eq $env:COMPUTERNAME) 
 { $Params.remove("ComputerName") }
 
-IF ($Credential -ne $null) { $Params.credential = $Credential }
+IF ($null -ne $Credential) { $Params.credential = $Credential }
 Invoke-Command @Params

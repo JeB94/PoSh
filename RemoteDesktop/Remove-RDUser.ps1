@@ -1,3 +1,15 @@
+<#
+    .SYNOPSIS
+
+    .DESCRIPTION
+
+    .PARAMETER alguno
+
+    .EXAMPLE
+
+    .NOTES
+
+#>
 [CmdletBinding()]
 param (
     [parameter(Position = 0)]
@@ -18,9 +30,10 @@ $Command = {
 
     $Group  = $GroupsinLang[$Language]
     $i = 0
-    Foreach ($user in $Member) {
-        Write-Output "[$i] Habilitando a $User"
-        net LocalGroup $Group /ADD $user
+    Foreach ($user in $using:Member) {
+        Write-Output "[$i] Deshabilitando a: $User"
+        net LocalGroup $Group /DELETE $user
+        Write-Output ""
         $i += 1
     }
 
@@ -35,7 +48,7 @@ IF ($ComputerName -eq "Localhost" -or $ComputerName -eq $env:COMPUTERNAME) {
     $Params.remove("ComputerName") 
 }
 
-IF ($Credential -ne $null) {
+IF ($null -ne $Credential) {
     $Params.credential = $Credential 
 }
 Invoke-Command @Params
