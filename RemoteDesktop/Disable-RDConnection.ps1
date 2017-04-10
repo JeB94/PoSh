@@ -14,7 +14,7 @@
 param (
     [parameter(Position = 0)]
     [String[]]$ComputerName = "Localhost",
-    $Credential 
+    [pscredential]$Credential 
 
 )
 
