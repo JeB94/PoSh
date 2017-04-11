@@ -1,9 +1,28 @@
+<#
+    .SYNOPSIS
+        Gets the password of all local SSID
+    
+    .DESCRIPTION
+        The Get-WlanPassword cmdlet gets the password of all SSID that are storaged on the computer.
+
+    .EXAMPLE
+        Get-WlanPassword
+    
+    .EXAMPLE
+        Invoke-Command -ComputerName "Contoso-PC" -Command { Get-WlanPassword } -Credential (Get-Credential)
+
+        This Command gets the password of ssid that are storaged in the remote computer "Consoto-PC"
+        
+#>
+
+
 [CmdletBinding()]
-param (  )
+param (  
+
+)
 
 BEGIN {
 
-    #Varian valores de matcheo dependiendo del idioma del SO
     $language = (Get-UICulture).name.substring(0, 2)
     $Matcher = @{  
         es = @{ 
@@ -20,6 +39,8 @@ BEGIN {
 }
 
 PROCESS { 
+
+    
     $Profiles = netsh wlan show profiles | 
         Select-String -Pattern $Matcher[$language].Profile | 
         ForEach-Object {
