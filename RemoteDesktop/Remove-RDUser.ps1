@@ -14,9 +14,12 @@
 param (
     [parameter(Position = 0)]
     [String[]]$ComputerName = "Localhost",
+
     [Alias("Username","Identity")]
-    [String[]][Parameter(Mandatory)] $Member,
-    $Credential 
+    [String[]]
+    [Parameter(Mandatory)] $Member,
+    
+    [pscredential]$Credential 
 
 ) 
 

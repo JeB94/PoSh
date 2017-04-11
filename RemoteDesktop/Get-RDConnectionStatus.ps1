@@ -12,18 +12,22 @@
 #>
 [CmdletBinding()]
 param (
+
     [parameter(Position = 0)]
     [String[]]$ComputerName = "Localhost",
-    $Credential 
+
+    [pscredential]$Credential 
 
 )
 
 
-$Command = { $Value = (Get-ItemProperty -path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\" -Name fdenytsconnections).fdenytsconnections
+$Command = { 
+        $Value = (Get-ItemProperty -path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\" -Name fdenytsconnections).fdenytsconnections
 
-            $dicValues = @{
+        $dicValues = @{
             0 = "Activado"
             1 = "Desactivado"}
+
             Write-Output "Remote Desktop se encuentra $($dicValues[$Value])"
 
 }
@@ -36,7 +40,8 @@ $Params = @{
 IF ($ComputerName -eq "Localhost" -or $ComputerName -eq $env:COMPUTERNAME) 
 { $Params.remove("ComputerName") }
 
-IF ($null -ne $Credential) { $Params.credential = $Credential }
+IF ($Credential) { $Params.credential = $Credential }
+
 Invoke-Command @Params
 
 #verificar para aceptar array de computername o no aceptarlo.
