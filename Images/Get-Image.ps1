@@ -1,30 +1,5 @@
 function Resize-Image {
-    <#
-    .SYNOPSIS
-        Resize-Image resizes an image file
-
-    .DESCRIPTION
-        This function uses the native .NET API to resize an image file, and optionally save it to a file or display it on the screen. You can specify a scale or a new resolution for the new image.
-        
-        It supports the following image formats: BMP, GIF, JPEG, PNG, TIFF 
- 
-    .EXAMPLE
-        Resize-Image -InputFile "C:\kitten.jpg" -Display
-
-        Resize the image by 50% and display it on the screen.
-
-    .EXAMPLE
-        Resize-Image -InputFile "C:\kitten.jpg" -Width 200 -Height 400 -Display
-
-        Resize the image to a specific size and display it on the screen.
-
-    .EXAMPLE
-        Resize-Image -InputFile "C:\kitten.jpg" -Scale 30 -OutputFile "C:\kitten2.jpg"
-
-        Resize the image to 30% of its original size and save it to a new file.
-    #>
-    Param(
-        [Parameter(Mandatory)]
+    param (          
         [string]$InputFile,
 
         [Parameter(Mandatory)]
@@ -45,7 +20,7 @@ function Resize-Image {
 
     # Define new resolution
     if ($Width -gt 0)
-     { [int32]$new_width = $Width }
+    { [int32]$new_width = $Width }
     elseif ($Scale -gt 0) { [int32]$new_width = $img.Width * ($Scale / 100) }
     else { [int32]$new_width = $img.Width / 2 }
     if ($Height -gt 0) { [int32]$new_height = $Height }
@@ -63,25 +38,4 @@ function Resize-Image {
     if ($OutputFile -ne "") {
         $img2.Save($OutputFile);
     }
-}
-
-
-$Path_Original = "C:\fotos_original\2017\"
-$Path_Modificado = "C:\Fotos_modificado\2017\"
-
-$Origen = Get-ChildItem $Path_Original -filter *.jpg -Recurse
-
-$Origen | ForEach-Object {
-    $PathFile = $_.FullName
-
-    $DirectoryName = $_.Directory
-    $Directory_Modificado = $DirectoryName.tostring().Replace($Path_Original, $Path_modificado)
-    IF (!(Test-Path $Directory_Modificado )) {
-        MD $Directory_Modificado
-    }
-    $Name = $_.Name
-
-    $New_File = "{0}\{1}" -f $Directory_modificado, $Name
-
-    Resize-Image -InputFile $PathFile -OutputFile $New_file 
 }

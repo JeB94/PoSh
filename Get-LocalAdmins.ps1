@@ -10,6 +10,7 @@
     .NOTES
 
 #>
+#Requires -RunAsAdministrator
 
 [CmdletBinding()]
 
@@ -18,8 +19,8 @@ param (
     [String[]][Alias("Server")]
     $ComputerName
 )
-#Requires -RunAsAdministrator
-Begin {
+
+BEGIN {
     #Funcion para crear objetos
     function New-GUline {
         param (
@@ -43,9 +44,10 @@ Begin {
     }
 }
 
-Process {
+PROCESS {
     Foreach ($Computer in $ComputerName) {
         Try {
+            
             #Hace un query a cada equipo filtrando los grupos Administradores locales
             $Wmi = Get-WmiObject -class Win32_GroupUser -ComputerName $Computer -ErrorAction Stop |
             Where-Object {  $_.groupcomponent -match '"Administra[t|d]or[a-z]{0,3}"$' -and $_.groupcomponent -match $Computer }

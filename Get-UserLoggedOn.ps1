@@ -24,6 +24,7 @@
 
 #Requires -Module ActiveDirectory
 #Requires -RunAsAdministrator
+#Requires -Version 3
 
 [CmdletBinding()]
 param ( 
@@ -54,7 +55,7 @@ Get-ADComputer @Propertys | ForEach-Object {
         
         foreach ($name in $Identity)
         {
-            If ($Username -eq "$Domain\$name") 
+            If ($Username -eq ("{0}\{1}" -f $Domain, $Name) ) 
             {
                 Write-Output "$name encontrado en equipo: $Computer"
                 break 

@@ -40,17 +40,20 @@ BEGIN {
 
         [BitConverter]::ToString($hash) -replace '[^0-9a-f]'
     }
-    $path = $Path.Replace("[",'``[').replace("]",'``]')
+    IF ($Path -match "\[") { $path = $Path.Replace("[",'``[') }
+    IF ($Path -match "\]") { $path = $Path.Replace("]",'``]') }
+
     $File = Get-Item -Path $Path
+
     $FileName = $File.Fullname
     $HashFile = Get-Md5HashSnip -Path  $path
     $output = @{}
 }
 
 PROCESS {
-    $Url = "http://api.thesubdb.com/?action=download&hash=$HashFile&language=$Language"
+    $Url = "http://api.thesubdb.com/?action=download&hash={0}&language={1}" -f $HashFile, $Language
     
-    $UserAgent = 'SubDB/1.0 (subtitle-downloader/1.0; http://github.com/manojmj92/subtitle-downloader)'
+    $UserAgent = 'SubDB/1.0 (PoSh/1.0; http://github.com/jeb94/PoSh)'
     $output.File = $File.BaseName
     $output.Language = $Language
 

@@ -8,8 +8,8 @@
     .EXAMPLE
 
     .NOTES
-    Requiere los modulos ActiveDirectory 
-    BEGIN { }
+
+BEGIN { }
 
 PROCESS { }
 

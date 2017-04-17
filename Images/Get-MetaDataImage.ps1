@@ -44,4 +44,3 @@ END {
     Write-Output $FileMetaData
 
 }
-#end foreach $file 
