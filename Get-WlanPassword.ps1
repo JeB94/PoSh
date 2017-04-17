@@ -48,10 +48,16 @@ param (
     IF ($Profiles) {
         Foreach ($ssid in $Profiles) {
             $Password = netsh wlan show profiles $ssid key = clear | select-string -Pattern $Matcher[$language].Password
-
+            
             $Property = @{
-                SSID = $ssid
-                Password = $Password.line.ToString().Split(":")[1].TrimStart()
+                    SSID = $ssid   
+            }
+            IF ($null -eq $Password)
+            {
+               $Property.Password = $Null 
+            }
+            else {
+                $Property.password = $Password.line.ToString().Split(":")[1].TrimStart()
             }
 
             $Object = New-Object PSObject -Property $Property
