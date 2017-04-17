@@ -21,7 +21,7 @@ param (
 
 )
 
-BEGIN {
+
 
     $language = (Get-UICulture).name.substring(0, 2)
     $Matcher = @{  
@@ -36,9 +36,7 @@ BEGIN {
         }
         
         $array_objects = New-Object System.Collections.Generic.List[System.Object]
-}
 
-PROCESS { 
 
     
     $Profiles = netsh wlan show profiles | 
@@ -61,11 +59,6 @@ PROCESS {
         }
     }
     
-}
+Write-Output -InputObject $array_objects
 
-END {
-            
-        Write-Output -InputObject $array_objects
-    
- }
 
