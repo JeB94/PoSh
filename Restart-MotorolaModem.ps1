@@ -1,9 +1,11 @@
 Function Restart-MotorolaModem {
     [CmdletBinding()]
     
-    param ()
+    param (
 
-    $Uri = "http://192.168.100.1"
+        $Uri = "http://192.168.100.1"
+
+    )
 
     $Request = Invoke-WebRequest -Uri ("{0}/RgConfig.asp" -f $Uri)
 
