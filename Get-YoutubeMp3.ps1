@@ -19,6 +19,7 @@ process {
 
         if (!($Query.link)) {
             Write-Error "File not found"
+            Continue
         }
 
         $DownloaderObject = New-Object Net.WebClient 

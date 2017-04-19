@@ -45,9 +45,7 @@ PROCESS {
         $Invoke.Forms.Fields['password'] = $credential.GetNetworkCredential().Password
 
         $Action = $Invoke.Forms.Action
-
         $Login = Invoke-WebRequest -uri ( "{0}{1}" -f $url, $action ) -WebSession $Sesion -Body $Invoke -Method Post -ErrorAction Stop
-
 
         # Querys 
         $Examenes = Invoke-WebRequest -uri ("{0}/examenes.asp" -f $Url) -WebSession $Sesion
@@ -60,7 +58,6 @@ PROCESS {
 
         $cursado_Parse = $($cursado.Allelements | Where-Object tagname -eq 'td' | Select-Object -ExpandProperty outertext )
         
-
         $i = 0
         $arrayMaterias = @()
         $notas | ForEach-Object {
@@ -80,11 +77,8 @@ PROCESS {
             
         }
 
-    
         $promedio = $acumulador / $contador
    
-        
-
         $finales = $correlatividad.AllElements | Where-Object {$_.tagname -eq 'td'} | Select-Object -ExpandProperty innertext
         $i = 0
         $final = @()
@@ -103,19 +97,12 @@ PROCESS {
         Write-Output -InputObject "Materias para rendir final:"
         Write-Output -InputObject $final
     
-
-        Start-Sleep -Seconds 10
     } #Cierre try
     catch {
         Write-Warning -Message "El sitio no esta disponible"
     }
 
 }
-
-END {
-
-}
-
 
 
 
