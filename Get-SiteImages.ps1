@@ -25,7 +25,6 @@ process {
         New-Item -Path $path -ItemType Directory | Out-Null
     }
 
-
     $invokeHtml = Invoke-WebRequest -Uri $url -UseBasicParsing
 
     If ($invokeHtml.StatusCode -ne "200") {
@@ -35,7 +34,7 @@ process {
     $Imagenes = (($invokeHtml.Images).Where( {$_.src -match "[png|jpg]$"}).src).trimstart("//")
 
     IF ($Imagenes.Count -eq 0) {
-        throw "Couldn't find images in the website"
+        throw "Couldn't find images on the website"
     }
 
     $i = 0
