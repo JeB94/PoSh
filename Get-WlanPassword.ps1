@@ -36,6 +36,7 @@ process {
         
     $array_objects = New-Object System.Collections.Generic.List[System.Object]
 
+    Write-Verbose "Searching wlan profiles"
     $Profiles = netsh wlan show profiles | 
         Select-String -Pattern $Matcher[$language].Profile | 
         ForEach-Object {
@@ -44,24 +45,26 @@ process {
     
 
     IF ($Profiles) {
+        Write-Verbose "Found wlan profiles. Retriving passwords..."
         Foreach ($ssid in $Profiles) {
+            Write-Verbose "Getting password of $Ssid"
             $Password = netsh wlan show profiles $ssid key = clear | select-string -Pattern $Matcher[$language].Password
             
             $Property = @{
                 SSID = $ssid   
             }
+            
             IF ($null -eq $Password) {
                 $Property.Password = $Null 
-            }
-            else {
+            } else {
                 $Property.password = $Password.line.ToString().Split(":")[1].TrimStart()
             }
 
             $Object = New-Object PSObject -Property $Property
-            $array_objects.Add($Object)
+            Write-Output -InputObject $Object
         } #end of Foreach
-    } #end of IF
-    
-    Write-Output -InputObject $array_objects
-}
+    } else {
+        Write-Warning "Profiles not found out"
+    } # if else
+} # process
 

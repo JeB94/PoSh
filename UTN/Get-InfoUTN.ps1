@@ -29,7 +29,7 @@ BEGIN {
         
     $url = "https://autogestion.frd.utn.edu.ar/"
 
-    IF (!($credential)) {
+    IF (!($PSBoundParameters.ContainsKey("credential"))) {
         $credential = Get-Credential -UserName $Legajo -Message "Ingresar clave de SYSACAD"
     }
 }

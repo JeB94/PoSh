@@ -15,7 +15,7 @@ function Get-ValorMoneda {
 
     process {
         Foreach ($Fecha in $Date) {
-
+            Write-Verbose "Querying values from date $Fecha"
             #Format date
             $DateToUri = $Fecha.ToString("dd/M/yyyy")
 
@@ -34,10 +34,10 @@ function Get-ValorMoneda {
                 $Dic.Moneda = $array[$i ++]
                 $Dic.Compra = $Array[($i ++)]
                 $Dic.Venta = $Array[($i ++)]
-                $Dic.Fecha = $Array[($i ++)]
+                $Dic.Fecha = [datetime]$Array[($i ++)]
 
                 # output object with the input date
-                if ($dic.fecha -eq $DateToUri) {
+                if ($Dic.Fecha -eq $DateToUri) {
                     [PSCustomObject]$Dic
                 } # if
             } # for
