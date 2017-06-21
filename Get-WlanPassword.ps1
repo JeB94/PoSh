@@ -25,17 +25,15 @@ process {
 
     $Matcher = @{  
         es = @{ 
-            Profile = "Perfil de todos los usuarios"
+            Profile  = "Perfil de todos los usuarios"
             Password = "Contenido de la clave" 
         }
         en = @{
-            Profile = "All User Profiles" 
+            Profile  = "All User Profiles" 
             Password = "Key Content" 
         } 
     } #end of hashtable
         
-    $array_objects = New-Object System.Collections.Generic.List[System.Object]
-
     Write-Verbose "Searching wlan profiles"
     $Profiles = netsh wlan show profiles | 
         Select-String -Pattern $Matcher[$language].Profile | 
@@ -56,14 +54,16 @@ process {
             
             IF ($null -eq $Password) {
                 $Property.Password = $Null 
-            } else {
+            }
+            else {
                 $Property.password = $Password.line.ToString().Split(":")[1].TrimStart()
             }
 
             $Object = New-Object PSObject -Property $Property
             Write-Output -InputObject $Object
         } #end of Foreach
-    } else {
+    }
+    else {
         Write-Warning "Profiles not found out"
     } # if else
 } # process

@@ -1,11 +1,14 @@
 param
 (
-    [Parameter ( Mandatory = $True)]
+    [Parameter(Mandatory)]
     [String]$Title ,
+    
     [ValidateSet ("movie", "series")]
     $type , 
+    
     [ValidateSet ("full", "short")]
     $Plot = "short" ,
+    
     [Switch]$Tomatoes
 
 )

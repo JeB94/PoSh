@@ -28,42 +28,39 @@
 
 [CmdletBinding()]
 param ( 
-        [parameter (Mandatory, 
-                    Position = 0,
-                    ValueFromPipeline,
-                    ValueFromPipelineByPropertyName)]
-        [Alias('SamAccountName')]
-        [String[]]$Identity,
-        $SearchBase
-    )
+    [parameter (Mandatory, 
+        Position = 0,
+        ValueFromPipeline,
+        ValueFromPipelineByPropertyName)]
+    [Alias('SamAccountName')]
+    [String[]]$Identity,
+    $SearchBase
+)
 
-$Domain = (Get-ADDomain).Name
+process {
+    $Domain = (Get-ADDomain).Name
 
-$Propertys = @{ Filter = 'enabled -eq "True"'  }
+    $Propertys = @{ Filter = 'enabled -eq "True"'  }
 
-IF ($SearchBase) { $Propertys.SearchBase = $SearchBase  }
+    IF ($SearchBase) { $Propertys.SearchBase = $SearchBase  }
 
-Get-ADComputer @Propertys | ForEach-Object {
+    Get-ADComputer @Propertys | ForEach-Object {
 
-    $Computer = $_.Name
+        $Computer = $_.Name
 
-    try
-    {
-        $ComputerInformation = Get-CimInstance -Class Win32_ComputerSystem -ComputerName $Computer -ErrorAction Stop
+        try {
+            $ComputerInformation = Get-CimInstance -Class Win32_ComputerSystem -ComputerName $Computer -ErrorAction Stop
 
-        $Username = $ComputerInformation.Username
+            $Username = $ComputerInformation.Username
         
-        foreach ($name in $Identity)
-        {
-            If ($Username -eq ("{0}\{1}" -f $Domain, $Name) ) 
-            {
-                Write-Output "$name encontrado en equipo: $Computer"
-                break 
-            } 
+            foreach ($name in $Identity) {
+                If ($Username -eq ("{0}\{1}" -f $Domain, $Name) ) {
+                    Write-Output "$name encontrado en equipo: $Computer"
+                    break 
+                } # if
+            } # foreach identity
+        } catch {
+            Write-Warning "Couldn't connect to $Computer" 
         }
-    }   
-    catch
-    {
-        out-null
-    }
-} #
+    } # foreach
+} # process
