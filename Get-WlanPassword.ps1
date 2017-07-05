@@ -1,4 +1,3 @@
-
 <#PSScriptInfo
 
 .VERSION 1.0.2
@@ -40,7 +39,7 @@
 param (
     [Parameter(ValueFromPipeline)]
     [String[]]
-    $ComputerName = $ENV:USERCOMPUTER,
+    $ComputerName = $ENV:ComputerName,
 
     [PSCredential]
     $Credential
@@ -77,7 +76,8 @@ begin {
                 $Password = netsh wlan show profiles $ssid key = clear | select-string -Pattern $Matcher[$language].Password
             
                 $Property = @{
-                    SSID = $ssid   
+                    SSID         = $ssid   
+                    ComputerName = $Env:ComputerName
                 }
             
                 IF ($null -eq $Password) {
@@ -116,7 +116,7 @@ process {
         }
 
         try {
-            Invoke-Command @Params -ErrorAction Stop |  Select-Object PSComputerName, SSID, Password
+            Invoke-Command @Params -ErrorAction Stop |  Select-Object ComputerName, SSID, Password
         }
         catch {
             Write-Error $_
