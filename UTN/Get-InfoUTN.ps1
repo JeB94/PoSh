@@ -65,9 +65,9 @@ PROCESS {
             $Valores = $_
             IF ($Valores -in $dic.Keys) {
                 $finalesRendidos = @{
-                    Fecha = $notas[$i - 3]
+                    Fecha   = $notas[$i - 3]
                     Materia = $notas[$i - 2]
-                    Nota = $dic.$valores
+                    Nota    = $dic.$valores
                 }
                 $ObjetoMaterias = New-Object psobject -Property $finalesRendidos
                 $arrayMaterias += $ObjetoMaterias
