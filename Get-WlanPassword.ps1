@@ -1,7 +1,7 @@
 
 <#PSScriptInfo
 
-.VERSION 1.0
+.VERSION 1.0.1
 
 .GUID b0a6b94b-06dc-4d52-b6dd-35a2cbcf3b09
 
@@ -92,7 +92,7 @@ begin {
             } #end of Foreach
         }
         else {
-            Write-Warning "Profiles not found on $($Env:ComputerName)"
+            Write-Warning "[$($Env:ComputerName)] Profile not found"
         } # if else
     }
 } # begin
