@@ -44,7 +44,8 @@ process {
         $Object = New-Object PSObject -Property $Property
         Write-Output -InputObject $Object
 
-    } catch [System.InvalidOperationException] {
+    }
+    catch [System.InvalidOperationException] {
         Write-Error "Couldn't resolve $URL"
     } # end try catch
 } # process

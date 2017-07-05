@@ -1,7 +1,7 @@
 
 <#PSScriptInfo
 
-.VERSION 1.0.1
+.VERSION 1.0.2
 
 .GUID b0a6b94b-06dc-4d52-b6dd-35a2cbcf3b09
 
@@ -40,7 +40,7 @@
 param (
     [Parameter(ValueFromPipeline)]
     [String[]]
-    $ComputerName = "localhost",
+    $ComputerName = $ENV:USERCOMPUTER,
 
     [PSCredential]
     $Credential
@@ -71,7 +71,7 @@ begin {
     
 
         IF ($Profiles) {
-            Write-Verbose "Found wlan profiles. Retriving passwords"
+            Write-Verbose "Found wlan profiles. Retrieving passwords"
             Foreach ($ssid in $Profiles) {
                 Write-Verbose "Getting password of $Ssid"
                 $Password = netsh wlan show profiles $ssid key = clear | select-string -Pattern $Matcher[$language].Password
@@ -102,8 +102,8 @@ process {
     Foreach ($Computer in $ComputerName) {
         Write-Verbose "Connecting to $Computer"
         $Params = @{
-            ComputerName = $Computer
-            ScriptBlock  = $Command
+            ComputerName     = $Computer
+            ScriptBlock      = $Command
             HideComputerName = $False
         }
 
@@ -116,7 +116,7 @@ process {
         }
 
         try {
-            Invoke-Command @Params -ErrorAction Stop |  Select-Object PSComputerName,SSID,Password
+            Invoke-Command @Params -ErrorAction Stop |  Select-Object PSComputerName, SSID, Password
         }
         catch {
             Write-Error $_

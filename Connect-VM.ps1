@@ -5,13 +5,14 @@ param (
         ValueFromPipeline,
         ValueFromPipelineByPropertyName)]
     [ValidateNotNullOrEmpty()]
-    [Alias("Name")]
+    [Alias("Name", "vm")]
     [String[]]
     $VMName, 
 
     [ValidateNotNullOrEmpty()]
+    [Alias("Server", "cn")]
     [String]
-    $ComputerName = 'localhost'
+    $ComputerName = $ENV:COMPUTERNAME
 )
 
 process {
@@ -19,5 +20,5 @@ process {
         Write-Verbose "Connecting to $VM at $ComputerName"
         vmconnect.exe $ComputerName $VM
         Write-Verbose "Connected to $VM at $ComputerName"
-    }
-}
+    } 
+} 

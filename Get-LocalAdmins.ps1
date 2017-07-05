@@ -50,12 +50,12 @@ PROCESS {
             
             #Hace un query a cada equipo filtrando los grupos Administradores locales
             $Wmi = Get-WmiObject -class Win32_GroupUser -ComputerName $Computer -ErrorAction Stop |
-            Where-Object {  $_.groupcomponent -match '"Administra[t|d]or[a-z]{0,3}"$' -and $_.groupcomponent -match $Computer }
+                Where-Object {  $_.groupcomponent -match '"Administra[t|d]or[a-z]{0,3}"$' -and $_.groupcomponent -match $Computer }
             $usuarios = @()
 
             $wmi | ForEach-Object {
                 #Parsea string para obtener los usuarios y grupos
-                $usuarios =  Parsear($_.partcomponent)
+                $usuarios = Parsear($_.partcomponent)
                 $Grupo = Parsear($_.groupcomponent)
                 #Genera objeto y lo imprime
                 New-GUline  -Usuarios $usuarios -Grupo $Grupo -Computer $Computer -Estado "Online"
