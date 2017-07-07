@@ -81,20 +81,23 @@ begin {
                 throw "$Path is not a file."
             }
 
-            if ($file.Length -le 128kb) {
-                $bytes = [System.IO.File]::ReadAllBytes($file.FullName)
+            if ($file.Length -le 128KB) {
+                $data = [System.IO.File]::ReadAllBytes($file.FullName)
             }
             else {
-                $bytes = New-Object byte[](128kb)
+                $data = New-Object byte[](128KB)
+
                 $stream = $file.OpenRead()
 
-                $null = $stream.Read($bytes, 0, 64kb)
-                $stream.Position = $stream.Length - 64kb
-                $null = $stream.Read($bytes, 64kb, 64kb)
+                $stream.Read($data , 0, 64KB) | Out-Null
+
+                $stream.Position = $stream.Length - 64KB
+
+                $stream.Read($data, 64KB, 64KB) | Out-Null
 
                 $stream.Close()
             }
-            Get-FileHash -InputStream ([IO.MemoryStream]$bytes) -Algorithm MD5 | Select-Object -ExpandProperty Hash
+            Get-FileHash -InputStream ([IO.MemoryStream]$data) -Algorithm MD5 | Select-Object -ExpandProperty Hash
         }
         catch {
             Write-Error $_
