@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.1.0
+.VERSION 0.1.2
 
 .GUID 550cd282-235c-4d77-83ab-789eec91f5c5
 
@@ -76,7 +76,7 @@ begin {
 
         try {
 
-            $file = Get-Item $Path -ErrorAction Stop
+            $file = Get-Item -LiteralPath $Path -ErrorAction Stop
             if ($file -isnot [System.IO.FileInfo]) {
                 throw "$Path is not a file."
             }
@@ -103,15 +103,13 @@ begin {
             Write-Error $_
         }
     } # Get-SubDBFileHash
-
+    
     function Rename-FileItem {
         param (
             [String]
             $Path
         )
-
-        ($Path -replace "\[", '``[') -replace "\]", '``]'
-
+        ($Path -replace '`+\[', '[') -replace '`+\]', ']'
     }
 
     $ValidateExtensions = @(
@@ -133,7 +131,7 @@ PROCESS {
         $File = Rename-FileItem $File
 
         # check file
-        if (-not (Test-Path $File)) { 
+        if (-not (Test-Path -LiteralPath $File)) { 
             Write-Error "File not found"
             Continue
         }
@@ -143,7 +141,7 @@ PROCESS {
             continue
         }
 
-        $VideoFile = Get-Item  $File
+        $VideoFile = Get-Item -LiteralPath $File
         $VideoFilePath = Rename-FileItem $VideoFile.FullName
 
         Write-Verbose "[PROCESS] Calculating hash of $($VideoFile.BaseName)"
