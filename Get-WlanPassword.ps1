@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.2
+.VERSION 1.0.3
 
 .GUID b0a6b94b-06dc-4d52-b6dd-35a2cbcf3b09
 
@@ -46,61 +46,71 @@ param (
 )
 begin {
 
+    Write-Verbose "[BEGIN  ] Starting $($MyInvocation.MyCommand)"
+
     $Command = {
 
-        $language = (Get-UICulture).name.substring(0, 2)
+        Write-Verbose "[PROCESS] Searching wlan profiles on $Env:ComputerName"
+        $Profiles = netsh wlan show profiles
 
-        $Matcher = @{  
-            es = @{ 
-                Profile  = "Perfil de todos los usuarios"
-                Password = "Contenido de la clave" 
+        $ListProfiles = @()
+
+        # Get Profiles
+        Foreach ($p in $Profiles) {
+            if (($p -split ":")[1] -match "\w+" ) {
+                $ListProfiles += $Matches[0]
             }
-            en = @{
-                Profile  = "All User Profiles" 
-                Password = "Key Content" 
-            } 
-        } #end of hashtable
-        
-        Write-Verbose "Searching wlan profiles on $Env:ComputerName"
-        $Profiles = netsh wlan show profiles | 
-            Select-String -Pattern $Matcher[$language].Profile | 
-            ForEach-Object {
-            $_.ToString().split(":")[1].trimstart()
-        } #end of foreach
-    
+        }
 
-        IF ($Profiles) {
-            Write-Verbose "Found wlan profiles. Retrieving passwords"
-            Foreach ($ssid in $Profiles) {
-                Write-Verbose "Getting password of $Ssid"
-                $Password = netsh wlan show profiles $ssid key = clear | select-string -Pattern $Matcher[$language].Password
-            
+        IF ($ListProfiles) {
+            Write-Verbose "[PROCESS] Found wlan profiles. Retrieving passwords"
+
+            Foreach ($ssid in $ListProfiles) {
+
+                $counter = 0
+                $isPasswordLine = 0
+                Write-Verbose "[PROCESS] Getting password of $Ssid"
+                $GetPassword = netsh wlan show profiles $ssid key = clear 
+
+                Foreach ($Line in $GetPassword) {
+                    if ($Counter -eq 3) {
+
+                        # Get Password
+                        if ($isPasswordLine -eq 5) {
+                            $Password = ($line -split ":")[1]
+                            break
+                        }
+                        else {
+                            $isPasswordLine ++
+                        }
+
+                    }
+                    elseif ($Line.StartsWith("---")) {
+                        $Counter ++ 
+                    }
+                }
+
                 $Property = @{
                     SSID         = $ssid   
                     ComputerName = $Env:ComputerName
-                }
-            
-                IF ($null -eq $Password) {
-                    $Property.Password = $Null 
-                }
-                else {
-                    $Property.Password = $Password.line.ToString().Split(":")[1].TrimStart()
+                    Password     = $Password.TrimStart()
                 }
 
                 $Object = New-Object PSObject -Property $Property
                 Write-Output -InputObject $Object
+
             } #end of Foreach
         }
         else {
             Write-Warning "[$($Env:ComputerName)] Profile not found"
         } # if else
-    }
+    } # script block
 } # begin
 
 process {
 
     Foreach ($Computer in $ComputerName) {
-        Write-Verbose "Connecting to $Computer"
+        Write-Verbose "[PROCESS] Connecting to $Computer"
         $Params = @{
             ComputerName     = $Computer
             ScriptBlock      = $Command
@@ -123,3 +133,7 @@ process {
         } # try catch
     } # foreach
 } # process
+
+end {
+    Write-Verbose "[END    ] Ending $($MyInvocation.MyCommand)"
+}

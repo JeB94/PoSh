@@ -10,9 +10,9 @@
 
 .COPYRIGHT 
 
-.TAGS Subtitles movies series api subdb
+.TAGS subtitle movies series api subdb srt sub subtitles tv
 
-.LICENSEURI 
+.LICENSEURI https://github.com/JeB94/PoSh/blob/master/LICENSE
 
 .PROJECTURI https://github.com/JeB94/PoSh 
 
@@ -216,7 +216,7 @@ PROCESS {
                 $params = @{
                     Value    = $QuerySubtitle
                     ItemType = 'File'
-                    Force    = $True # ask then
+                    Force    = $True # ask then - support should process
                 }
 
                 if (!($PSBoundParameters.ContainsKey('DestinationPath'))) {
