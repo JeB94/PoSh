@@ -45,7 +45,9 @@ Get-Subtitle.ps1  (Get-ChildItem -Filter *.mkv -Path 'D:\movies' | select-Object
 
 #Requires -Version 5
 
-[CmdletBinding(DefaultParameterSetName = 'Download')]
+[CmdletBinding(DefaultParameterSetName = 'Download',
+    SupportsShouldProcess = $True,
+    ConfirmImpact = 'High')]
 
 param (
     [Parameter(Mandatory, 
@@ -74,7 +76,11 @@ param (
 
     [Parameter(ParameterSetName = 'Install')]
     [Switch]
-    $AddToExplorer
+    $InstallShortCut, 
+
+    [Parameter(ParameterSetName = 'Uninstall')]
+    [Switch]
+    $UninstallShortCut
 
 )
 
@@ -134,52 +140,79 @@ begin {
         "3g2"
     ) 
 
-
+    $RegistryPath = 'Registry::HKEY_CLASSES_ROOT\``*\Shell'
+    $SubtitlePath = Join-Path $RegistryPath 'Subtitle'
 } # begin
 
 PROCESS {
 
     if ($PsCmdlet.ParameterSetName -eq 'install') {
         Write-Verbose '[PROCESS] Creating registry values'
-        $RegistryPath = 'Registry::HKEY_CLASSES_ROOT\``*\Shell'
 
-        # create root folder
-        $SubtitlePath = Join-Path $RegistryPath 'Subtitle'
-        if (!(Test-Path $SubtitlePath)) {
+        if ($PsCmdlet.ShouldProcess("Registry::HKEY_CLASSES_ROOT", "InstallShortCut")) {
+            if (!(Test-Path $SubtitlePath)) {
 
-            try {
-                $ErrorActionPreference = "Stop"
-                New-Item -Path $RegistryPath -Name 'Subtitle' -ItemType Directory | Out-Null
-                New-ItemProperty -Path $SubtitlePath -Name 'SubCommands' | Out-Null
+                try {
 
-                # create child folder
-                New-Item -Path $SubtitlePath -Name 'shell' | Out-null
-                $shellPath = Join-Path $SubtitlePath 'shell'
+                    $ErrorActionPreference = "Stop"
+                    New-Item -Path $RegistryPath -Name 'Subtitle' -ItemType Directory | Out-Null
+                    New-ItemProperty -Path $SubtitlePath -Name 'SubCommands' | Out-Null
 
-                # create folder for each language
-                # spanish
-                Write-Verbose "[PROCESS] Adding Spanish option"
-                $LanguagePath = Join-Path $shellPath "Spanish"
-                New-Item -Path $shellPath -Name "Spanish" -Value "Spanish" | Out-Null
-                New-Item -Path $LanguagePath -Name Command -Value "powershell.exe -WindowStyle Hidden -ExecutionPolicy ByPass -noprofile -command Get-Subtitle.ps1 '`"%1`"' es"  | Out-Null
-                Write-Verbose "[PROCESS] Added spanish language"
+                    # create child folder
+                    New-Item -Path $SubtitlePath -Name 'shell' | Out-null
+                    $shellPath = Join-Path $SubtitlePath 'shell'
 
-                # english
-                Write-Verbose "[PROCESS] Adding English option"
-                $LanguagePath = Join-Path $shellPath "English"
-                New-Item -Path $shellPath -Name "English" -Value "English" | Out-Null
-                New-Item -Path $LanguagePath -Name Command -Value "powershell.exe -WindowStyle Hidden -ExecutionPolicy ByPass -noprofile -command Get-Subtitle.ps1 '`"%1`"' en"  | Out-Null
-                Write-Verbose "[PROCESS] Added English language"
+                    # create folder for each language
+                    # spanish
+                    Write-Verbose "[PROCESS] Adding Spanish option"
+                    $LanguagePath = Join-Path $shellPath "Spanish"
+                    New-Item -Path $shellPath -Name "Spanish" -Value "Spanish" | Out-Null
+                    New-Item -Path $LanguagePath -Name Command -Value "powershell.exe -WindowStyle Hidden -ExecutionPolicy ByPass -noprofile -command Get-Subtitle.ps1 '`"%1`"' es"  | Out-Null
+                    Write-Verbose "[PROCESS] Added spanish language"
+
+                    # english
+                    Write-Verbose "[PROCESS] Adding English option"
+                    $LanguagePath = Join-Path $shellPath "English"
+                    New-Item -Path $shellPath -Name "English" -Value "English" | Out-Null
+                    New-Item -Path $LanguagePath -Name Command -Value "powershell.exe -WindowStyle Hidden -ExecutionPolicy ByPass -noprofile -command Get-Subtitle.ps1 '`"%1`"' en"  | Out-Null
+                    Write-Verbose "[PROCESS] Added English language"
+                }
+                catch {
+                    Write-Error $_
+                    $ErrorActionPreference = "Continue"
+                } # try catch
             }
-            catch {
-                Write-Error $_
-                $ErrorActionPreference = "Continue"
-            } # try catch
+            else {
+                Write-Warning "[PROCESS] Shorcut is already configured"
+            }
         } # if
-        else {
-            Write-Warning "[PROCESS] The shorcut  is already configured"
-        }
     }
+    
+    # Uninstall ParameterSet
+    elseif ($PsCmdlet.ParameterSetName -eq 'uninstall' ) {
+        Write-Verbose "[PROCESS] Removing registry values"
+
+        if ($PsCmdlet.ShouldProcess("Registry::HKEY_CLASSES_ROOT", "UninstallShortCut")) {
+            if (Test-Path $SubtitlePath) {
+
+                try {
+                    Write-Verbose "[PROCESS] Removing values"
+                    Remove-Item -Path $SubtitlePath -Recurse -ErrorAction Stop | Out-Null  
+                    Write-Verbose "[PROCESS] Shortcut was uninstalled"
+                }
+                catch {
+                    Write-Error "Denied Access. Run cmdlet as Administrator"
+                }
+            }
+            else {
+                Write-Warning "[PROCESS] Shorcut have already been uninstalled"
+            }
+
+        } # if should process
+
+    }
+
+    # Download ParameterSet
     else {
         Foreach ($File in $Path ) {
             Write-Verbose "[PROCESS] Analyzing file $File"
