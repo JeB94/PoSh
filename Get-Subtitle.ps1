@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.2.2
+.VERSION 0.2.3
 
 .GUID 550cd282-235c-4d77-83ab-789eec91f5c5
 
@@ -41,7 +41,7 @@ Get-Subtitle.ps1 -InstallShortCut
 Get-Subtittle.ps1 -UninstallShortCut
 
 .EXAMPLE
-Get-Subtitle.ps1 -Path 'D:\movies\inception.mp4' -Language es
+Get-Subtitle.ps1 -Path 'D:\movies\movie.mp4' -Language es
 
 .EXAMPLE
 Get-ChildItem "D:\movies\*.mp4" | Select-Object -ExpandProperty FullName | Get-Subtitle.ps1 -Language es -DestinationPath D:\Subtitles
@@ -75,6 +75,9 @@ param (
         'sv', 'tr') ]
     [String]
     $Language = 'en',
+
+    [Switch]
+    $Force,
 
     [Parameter(ParameterSetName = 'Download')]
     [ValidateSet('srt', 'sub')]
@@ -154,39 +157,47 @@ begin {
 PROCESS {
 
     if ($PsCmdlet.ParameterSetName -eq 'install') {
-        Write-Verbose '[PROCESS] Creating registry values'
 
         if ($PsCmdlet.ShouldProcess("Registry::HKEY_CLASSES_ROOT", "InstallShortCut")) {
-            if (!(Test-Path $SubtitlePath)) {
+
+            Write-Verbose '[PROCESS] Creating registry values'
+
+            if (!(Test-Path $SubtitlePath) -or $Force) {
 
                 try {
+                    $Param = @{
+                        ErrorAction = 'Stop'
+                    }
 
-                    $ErrorActionPreference = "Stop"
-                    New-Item -Path $RegistryPath -Name 'Subtitle' -ItemType Directory | Out-Null
-                    New-ItemProperty -Path $SubtitlePath -Name 'SubCommands' | Out-Null
+                    if ($Force) {
+                        $Param.Add("Force", $True)
+                    } 
+
+                    Write-Verbose "[PROCESS] Creating Subtitle value"
+                    New-Item -Path $RegistryPath -Name 'Subtitle' -ItemType Directory @Param | Out-Null
+                    New-ItemProperty -Path $SubtitlePath -Name 'SubCommands' @Param | Out-Null
 
                     # create child folder
-                    New-Item -Path $SubtitlePath -Name 'shell' | Out-null
+                    New-Item -Path $SubtitlePath -Name 'shell' @Param | Out-null
                     $shellPath = Join-Path $SubtitlePath 'shell'
 
                     # create folder for each language
                     # spanish
                     Write-Verbose "[PROCESS] Adding Spanish option"
                     $LanguagePath = Join-Path $shellPath "Spanish"
-                    New-Item -Path $shellPath -Name "Spanish" -Value "Spanish" | Out-Null
-                    New-Item -Path $LanguagePath -Name Command -Value "powershell.exe -WindowStyle Hidden -ExecutionPolicy ByPass -noprofile -command Get-Subtitle.ps1 '`"%1`"' es"  | Out-Null
+                    New-Item -Path $shellPath -Name "Spanish" -Value "Spanish" @Param | Out-Null
+                    New-Item -Path $LanguagePath -Name Command @Param -Value "powershell.exe -WindowStyle Hidden -ExecutionPolicy ByPass -noprofile -command Get-Subtitle.ps1 '`"%1`"' es -Force"  | Out-Null
                     Write-Verbose "[PROCESS] Added spanish language"
 
                     # english
                     Write-Verbose "[PROCESS] Adding English option"
                     $LanguagePath = Join-Path $shellPath "English"
-                    New-Item -Path $shellPath -Name "English" -Value "English" | Out-Null
-                    New-Item -Path $LanguagePath -Name Command -Value "powershell.exe -WindowStyle Hidden -ExecutionPolicy ByPass -noprofile -command Get-Subtitle.ps1 '`"%1`"' en"  | Out-Null
+                    New-Item -Path $shellPath -Name "English" -Value "English" @Param | Out-Null
+                    New-Item -Path $LanguagePath -Name Command @Param -Value "powershell.exe -WindowStyle Hidden -ExecutionPolicy ByPass -noprofile -command Get-Subtitle.ps1 '`"%1`"' en -Force"  | Out-Null
                     Write-Verbose "[PROCESS] Added English language"
                 }
                 catch {
                     Write-Error $_
-                    $ErrorActionPreference = "Continue"
                 } # try catch
             }
             else {
@@ -224,6 +235,7 @@ PROCESS {
         Foreach ($File in $Path ) {
             Write-Verbose "[PROCESS] Analyzing file $File"
 
+            # avoid problems with wildcards
             $File = Rename-FileItem $File
 
             # check file
@@ -244,48 +256,65 @@ PROCESS {
             $HashFile = Get-SubDBFileHash -Path $VideoFilePath
             Write-Verbose "[PROCESS] Hash was calculated correctly"
 
-
+            # api info
             $Url = "http://api.thesubdb.com/?action={0}&hash={1}&language={2}" -f "download" , $HashFile, $Language
             $UserAgent = 'SubDB/1.0 (Get-Subtitle/1.0; http://github.com/JeB94/Posh)'
 
 
             try {
+                # query api
                 $QuerySubtitle = Invoke-RestMethod -UserAgent $UserAgent -Uri $url -ErrorAction Stop
                 $VideoBaseName = '{0}.{1}' -f $VideoFile.BaseName, $SubtitleExtension
-
+                
                 $params = @{
                     Value    = $QuerySubtitle
                     ItemType = 'File'
-                    Force    = $True # ask then - support should process
                 }
 
+                #  supports force
+                if ($Force) {
+                    $params.Force = $True
+                }
+
+                # adding destination path
                 if (!($PSBoundParameters.ContainsKey('DestinationPath'))) {
                     $DestinationPath = $VideoFile.Directory
                 }
 
                 $params.Path = Join-Path -Path $DestinationPath -ChildPath  $VideoBaseName
 
-                New-Item @Params | Out-Null
-                Write-Verbose "[PROCESS] File saved on $DestinationPath"
+                # saving file
                 try {
-                    New-BurntToastNotification -Text "Subtitle Downloaded!", "$VideoBaseName"
-                } 
+                    New-Item @Params -ErrorAction Stop | Out-Null
+                    Write-Verbose "[PROCESS] File saved on $DestinationPath"
+
+                    # send desktop notificacion
+                    try {
+                        New-BurntToastNotification -Text "Subtitle Downloaded!", "$VideoBaseName"
+                    } 
+                    catch {
+                        # BurntToast module is not installed
+                        Out-Null
+                    }
+
+                    $Output = @{
+                        File     = $VideoFile.BaseName
+                        Language = $Language
+                    }
+
+                    [PSCustomObject]$output
+                }
                 catch {
-                    Out-Null
+                    Write-Error $_
                 }
-
-
-                $Output = @{
-                    File     = $VideoFile.BaseName
-                    Language = $Language
-                }
-
-                [PSCustomObject]$output
             }
             catch {
+                # search for available languages
                 Write-Warning "$($language.ToUpper()) subtitle not found"
                 Write-Warning "Searching for available subtitles"
                 $Url = "http://api.thesubdb.com/?action={0}&hash={1}" -f "search" , $HashFile
+
+                # query api for available languages
                 try {
                     $SearchSubtitle = Invoke-RestMethod -UserAgent $userAgent -Uri $Url -ErrorAction Stop
                     Write-Verbose "[PROCESS] Found available subtitle languages"
