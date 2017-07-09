@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.2.0
+.VERSION 0.2.2
 
 .GUID 550cd282-235c-4d77-83ab-789eec91f5c5
 
@@ -18,7 +18,7 @@
 
 .ICONURI 
 
-.EXTERNALMODULEDEPENDENCIES 
+.EXTERNALMODULEDEPENDENCIES  BurntToast
 
 .REQUIREDSCRIPTS 
 
@@ -32,6 +32,13 @@
 
 .DESCRIPTION 
  Download subtitles from theSUBDB API. 
+
+
+.EXAMPLE
+Get-Subtitle.ps1 -InstallShortCut
+
+.EXAMPLE
+Get-Subtittle.ps1 -UninstallShortCut
 
 .EXAMPLE
 Get-Subtitle.ps1 -Path 'D:\movies\inception.mp4' -Language es
@@ -260,6 +267,13 @@ PROCESS {
 
                 New-Item @Params | Out-Null
                 Write-Verbose "[PROCESS] File saved on $DestinationPath"
+                try {
+                    New-BurntToastNotification -Text "Subtitle Downloaded!", "$VideoBaseName"
+                } 
+                catch {
+                    Out-Null
+                }
+
 
                 $Output = @{
                     File     = $VideoFile.BaseName
