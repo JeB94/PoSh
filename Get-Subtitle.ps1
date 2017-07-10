@@ -18,7 +18,7 @@
 
 .ICONURI 
 
-.EXTERNALMODULEDEPENDENCIES  BurntToast
+.EXTERNALMODULEDEPENDENCIES  
 
 .REQUIREDSCRIPTS 
 
@@ -96,6 +96,21 @@ param (
 
 begin { 
     Write-Verbose "[BEGIN  ] Starting $($MYINVOCATION.MyCommand)"
+
+    # Install BurntToast for notifications 
+    $requiredModule = 'BurntToast'
+    if ($requiredModule -notin (Get-Module -ListAvailable -Verbose:$False).Name) {
+        Write-Verbose -Message "[BEGIN  ] BurntToast module not found "
+        try {
+
+            Write-Verbose -Message "[BEGIN  ] Installing BurntToast module" -Verbose
+            Install-Module 'BurntToast' -Force
+        }
+        catch {
+            Write-Warning 'Could not install BurntToast Module'
+        }
+    }
+
     function Get-SubDBFileHash {
         param (
             [ValidateNotNullOrEmpty()]
@@ -267,8 +282,7 @@ PROCESS {
                 $VideoBaseName = '{0}.{1}' -f $VideoFile.BaseName, $SubtitleExtension
                 
                 $params = @{
-                    Value    = $QuerySubtitle
-                    ItemType = 'File'
+                    Encoding = 'default'
                 }
 
                 #  supports force
@@ -281,16 +295,17 @@ PROCESS {
                     $DestinationPath = $VideoFile.Directory
                 }
 
-                $params.Path = Join-Path -Path $DestinationPath -ChildPath  $VideoBaseName
+                $params.LiteralPath = Join-Path -Path $DestinationPath -ChildPath  $VideoBaseName
 
                 # saving file
                 try {
-                    New-Item @Params -ErrorAction Stop | Out-Null
+                    $QuerySubtitle | Out-File @Params 
                     Write-Verbose "[PROCESS] File saved on $DestinationPath"
 
                     # send desktop notificacion
                     try {
-                        New-BurntToastNotification -Text "Subtitle Downloaded!", "$VideoBaseName"
+                        New-BTAppId -WarningAction SilentlyContinue
+                        New-BurntToastNotification -Text "Subtitle Downloaded!", "$VideoBaseName" -Silent
                     } 
                     catch {
                         # BurntToast module is not installed
