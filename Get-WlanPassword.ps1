@@ -57,7 +57,7 @@ begin {
 
         # Get Profiles
         Foreach ($p in $Profiles) {
-            if (($p -split ":")[1] -match "\w+" ) {
+            if (($p -split ":")[1] -match "\w+[\w+\s\.]+" ) {
                 $ListProfiles += $Matches[0]
             }
         }
@@ -89,13 +89,17 @@ begin {
                         $Counter ++ 
                     }
                 }
-
+                
                 $Property = @{
                     SSID         = $ssid   
                     ComputerName = $Env:ComputerName
-                    Password     = $Password.TrimStart()
                 }
 
+                if ($null -ne $Password) {
+                
+                    $Property.Password = $Password.TrimStart()
+                }
+                
                 $Object = New-Object PSObject -Property $Property
                 Write-Output -InputObject $Object
 

@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.2.3
+.VERSION 0.2.4
 
 .GUID 550cd282-235c-4d77-83ab-789eec91f5c5
 
@@ -32,7 +32,6 @@
 
 .DESCRIPTION 
  Download subtitles from theSUBDB API. 
-
 
 .EXAMPLE
 Get-Subtitle.ps1 -InstallShortCut

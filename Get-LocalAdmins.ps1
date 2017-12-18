@@ -3,7 +3,7 @@
 
     .DESCRIPTION
 
-    .PARAMETER alguno
+    .PARAMETER ComputerName
 
     .EXAMPLE
 
@@ -15,9 +15,8 @@
 [CmdletBinding()]
 
 param (
-    [Parameter(Mandatory)]
     [String[]][Alias("Server")]
-    $ComputerName
+    $ComputerName = $Env:COMPUTERNAME
 )
 
 BEGIN {
