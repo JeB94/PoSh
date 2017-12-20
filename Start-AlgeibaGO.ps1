@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+﻿
 param( 
 
     [Parameter(Mandatory = $True)]
@@ -19,6 +19,104 @@ param(
 )
 
 begin {
+
+    function New-UpcomingTaskReport {
+        [CmdletBinding()]
+        param (
+
+            [Parameter(Mandatory = $True)]
+            $Tests,
+            
+            [Parameter(Mandatory = $True)]
+            [String] 
+            $ReportPath,
+
+            [String] 
+            $Cliente
+        )
+
+        if ($tests.count -gt 0) {
+
+            if (!(Test-Path $ReportPath)) {
+                New-Item $ReportPath -ItemType File | Out-Null
+            
+            }
+    
+            Clear-Content $ReportPath
+    
+            $fullReport = "<img src=data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAI8AAAAcCAIAAADX83spAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAABnWSURBVGhD1Zp3fFbF0sej116vWLAritj1YgEFUSQSpIsgCEhVEREERSwoAopwQToqiEjRUJUqIEjvNSGQHpKQ3p88eXp/5v2eM/GYa7n/vPcf53M87pmd3Z2d307ZJ8REo1ERiUQiwWBQ21AgENBGTU2NMt1ut3IcDgdvr9ern0qWfMgka57fUTgc1gbLacOS9Pl8KKBtCEnmtOT9fr82UMPpdGobYpR2MY/H49GlrXkYbs1Pu+78SvSiiVItqw4h7/N4JRARszMkUb9EnOK3+10hidTOG5FwSPxh8Yi4MJeI3XiCgWhQwgHxBaXGJYUVkplfsefQ6dXrDkz//Je3Bu8Z0OVo96cSYhsdbHyDrUu38GvDZNZ02btJilLFUSJeP4sJyrojUmQXm80fqigRd1VAYixF2Wrd/dCmy2az6aduG/BUhs0XFBSMHj162rRplZWVpsifE0Mso7OEhYHOr3wlNahSLcskXdo6EErFxcW9e/d+6KGH5s2bpxxmW7t27UcffZSUlMQMrKVMDtbvzpZFddHSNgOBn7V0UeEVAaUwxwK0AhIBMN6ekK8WLf4XFfbjw7YcZfNNO8qwoI/NR0rLfbkFzvRsZ3KGPy1dUk5K4n7Zt17WzwvOfa/m40F7WjRff88DK+5vtP2lTnkr5kpxpoTN8wH+zogkZcjOXSF/KafEG5EYy5QQWqKraa7/sBcyeoSVr4ZLTk6+5JJLHnzwwbKyMkPoV8JMCEN60pXJwa9rbosPIYaZaj/MLlZRDm2cCUvRVovzRh7/Pn78+KWXXhoTE/PEE0+oAizRv39/OD/++CNidef8U2JyJSR/JwyTVQzL4EKRaNhvaI6Zqjw11T4naOE4gGeKGg+74WhgIB4OSTSMxaLsl0BQ46iqsdtc9uqQ04X5JOSVkF1CJRLIEWeiFO6XrevShw9d3b7lvndfKdyy1J6d4MJDWAxLlzuLp3+1pGuXqtNHAuIIuqMxbKwuYBZhMouPydTW+tZgePr06bPPPvuuu+5SOyLMJmn8jhQ2bTOcsXVhowv6o2XhIMbMDFfO75RMSEi48847zznnnOHDhwOnLt2nTx/Q2rRpk8qYZ6Z2ODLAqW3IQOk/iV6EVRM+abBiJBRWPAwm2pqOZXhYNFirjfaaDxyDyQTgZ7ZN+RDyNMJRjBAJR/xuX7UzUO4Tm08qRMrEUyJHdhYt/yJ3zdz8Yz8VF5ywe+2GvfjP6S2dOmvc/XeGCxOM+BqSGHPNWquhH2/MpJvUM64bUFII2TnvzMzM+vXrN2nSpK5NLWIUTExg7Pk/wVAOFkGAtsVkHsuroLqjEOaNYlZkhsrLyw8cOHDmzBnaKjB48GAO0Lp168x+g+AzM6QCyvkdKf+vyOUkGRl7sTtqTADEEwrwrtUb5wNRsAsbwQ+iC1t4Jeg30hkdwYj4QlFfIOwJSgC+IxIgsdVI1CbBqmiN3Z1HXI/akzISVh9P3lAayrNJCG+w2SvE63J+O3/So3dL5fGIFEe8Nb+hpY0/EtigK28yEJ8qyf5PnjwJWkRCqxKBMPGfTsVwl8ulXoVM3WOuZGEDYPppYcm7urqa4sJuJ4UbhK9rG75yVMmXXnoJtJYuXcpC1hJ0QVabmSHFCVI+xBD4tR/monDMgTANPp9Io1AwGuFdixZRLwQuPgnwGF4XFn8IsMIu8VWL22Y8vhowkghViDtkZDMjJfHQcISjbvEGpEqkUCRfpCQgdpcEnBGfkSLtlc4pk+Y91EjKjkkkX/yuGI0AujREyZCSknL06NGDBw/iPRjFsr6eYmvniNWrV49IqOUiVmY/vNUEtCsqKnJycn755Ze0tDR8AnPDNIcaMcryEph1wWN4UVFRYmIiOlAvMENd9ZSqqtieQehmQQiB1nnnnbd9+3b9RDGGHzt27MiRI+np6WyNqRQtqC5UdQk9s7OzUeDEiROpqal2u62isgQXZUhJSYnHCx7i8HhJT6Y3maViyCNehzht4iyNBorFlyflWZJ+XPbvkX275eQxKcyQsjTxAYk9gHOGqEF+RQy0PUVSni62HHGXiLNCHC5xUqF45WS6vPPhgYcflmNbjOFFpbW+BeEimzdvfuWVV2688UaiP0QR0bx5c6o+NpmXlzdo0KDnn3+ePXPuIAxx1VVX3XfffbQxt4UiRNecOXPI/zoPdMMNN7z++utYHwvGx8c3a9aMeAWcCGM1RZFJyEZ9+/Zt2LChjsL0jRo1Gjly5N69e82Ja0t5DMf7vffeQz1OFQqYndK1a1dG7du3Dz8mezHVNddcQ26DyfuZZ5756quvTKQM+iNaeOrGjRtffvnl66+/3lw/5uKLL4xt3XLS5AmsyZz9+vTv27d/1ukc1vOFgmYqokh0G6HLUyGVBVKalrttUcnWBdVLZxdNeD9zYN+M3j0KRgyqmDI6siNesndKIJvDZoRJoCJUcRlxA7ZLMk4lTJlwbMpEOZksNX5Jzd/67tjTI0bb4p7befW12W/22z6s//5Ro2OsM066xjoQGHTu3Ll9+/bt2rU799xzL7roohdeeIEKEIuzDUzMVpEHkosvvvjxxx/XcARTTbl+/XqMSES67LLLKAT69evXpk2b2267jWmZ/IcffsBkGGLcuHEWwOpboMhydF177bVxcXEDBw5s27Yt5v7HP/7xz3/+E/iRwcRYTRtaAW7YsEG3gAI9e/Y866yzfvrpp/Hjx6sCaDJs2LChQ4c+9thjF154IfJPPfUUUQF5a+M6IW9GcUCRQdvY2FhD87ZxF11+Ycy5Ma1atcxMz2jU4I56l155JrdQQyIOEg47JeI4tW110qpv05bOTZz2YcrYgSnDOqX1jM19rlV5h9YVHWLzO7dM6v7khl5Ndkzo6Ti5QiRbolXidBAvxRY10PLhRqcWte2wpEMXo2Qvdsip3Plde//QIi7rX8331L9+a9vmX8Y9vqR7L8O3du3axTlVLb/55hv8nQijkJCchgwZwsFkk3ffffcdd9zxV2gpEYXwNkyGuYGNwKi9ALls2TKYrNK4ceObbrpp6tSpWkxCOAcQMorQOnv2bOKP8lkIZTAiJ+bKK6+cOXOm8pW0AiQeaKxmNvADEi5hzMNp2717N3yW1mOBbqpAhw4diHJwUE8DKQ1ODwqQiT/55BMiLTGACatrbEnpJ0aMevOCC8955F+NG95822ONH8tIzaawAC2SUNBfdWznmm0Lp7r2b5Dso7J2Xmr/Fjnd/lX4/KPul1rLkB4y4qXIsK7lQ9okvtZs6+tNfh7bqXjnHHFnSqgKzQCcqk6CXklJW9b+uRWdX5C0bKn2SkG5FJdJYpJ8OC69RXPZHC+Zh0hFMUShFi1acKZAYtWqVaq9xhYMrY0JEyawSYia4q/QwmTce5gKsbffflujXF3CgWA++eSTGAUZ5rTSFRkRCPE83Esnh9BEnZVEsmPHDoZgylOnTmkvRJbC7XBW/cTivXr1Ov/885EkGFjhES+05mTCLl26IECQ5JMhqgNXNJh4/88//6wcHU5mAhJn0D59xpR6l1x2Xsw5DerfWphTSoc3HPQEXRKpWTZ3wr7FU6UsWQoTKiYNsQ95OjC4uffNZ/yjnw9OHBCeOigweYBnYk/H+M6577Tc1KPh4Y+7SNpPEswPuqkp/Ha9WGekLOjSaXH3F+RMruFqPrf47OIoqR7z3tzbrpXUXySUL56qmK1bt6IohFehH8SZwvREBhpaQdDANMjcfvvt/yUSfv/998iQrkjpxkTmzQyLEHPYvJqeLhwLsUmTJvEJJBwX0IXzzjvvMAlrsbRlX3ohGp9//jkuPmrUKAS0C4tfcMEFy5cvp61JCLRUAaZlXajW6OZtV50MZ73lllsA1SpGuAlwhhg4Y8YM5agayNsd1e6oC5tGJThiyNDzY86584Y7/DUhtysAWk6KPanZvHRW5sb5Yk+Tzd9sandPYEQrGddR5r0m8e94lr9nWzrKvnC456tBock9ZGrP8uEtU4a0rFzysbjTJVjklmoqEwOtlBPfduywqEtnycrE1SJRbyBYJb6y4LwZ31DBlxMJSiJRfwyxHkUJ69x2dc9KVlIBDLTfv38/yeO/R0LMx1QLFizARuzWsrgSTE0V3bt3x41Gjx5NGw6LPv3009dddx11AW7EuhwR+Ji1tLQUu8OkAqKX5e69914FD3r11VdZbs2aNbRVW1IdnIkTJ9K2VkcTSNsKnh6OMWPGKJPKAtSbNm0KbCCkMhAzhI062p9XmeMPuI/sO3BLvRsfuPX+ysIap8NH8PVGXaFgWcr+H1J/nCmnNuVPfH1vt8Zn+j3geD/Wv3BIZOfnkdT4SObK4KF5oTWfRGcMlE96yqjnKge1PjG0o6Rvl0ABFUcQtKgyjh9fHdduVbtOcjIFjc063y32Et/0zxc/eK8k7RV7oQTECC9XXHEFyQn99PhztDEWumIpK1gBydVXX029/ldoIQyWWEELfSW1FHhY9mIscCJG3uITK2dkZDAPHIoCEifKgBz+R2l66623UhPyJmmBEzL0YlOd7c0334SzcuVKc2Jj5hdffBEOBaRVOFjQsjVl0gB43LRjx44Mwf++/fZb0OIM0cvMMFVh5LlMecTjN+qBkKvC9uAt9zS8qkFucj6RELSC4otGKj1FR9NWTi1bMv7QoLicwa2r33iq8u3Y7M9ezF062nFyldgOSskeOb5C1k+TD1+MDGnrHNz+QM8Wsv17OXNEopWoKQGHJCRsbtNxQ9tOkphsoBVBbbcUnfZOnb6qaTPJPiXuGgMtii5oxIgR5qb+hDhritkjjzyCBf8KLSr7m2++mbqRBvu0YFbSIVBxcTE1G1UDHkB0wi7ch8CJOrBly5YkFYgC4VmT4DA/706dOnH2qVQpr5kBV2OsokXxojNDXDBIipSvtd8moQxU+2ESKzKQugksmee7774j/+FwdKGnHlmlGo/dHqGgBq2gu7L6ifuaPnTbg9WFjnBIHMbvvEhy/z0dSVxXuXhc+siuxYOflTE95ZP+zslDc2a8f2bFF56DG+XULknYLDvj5YtRvre7Fr3ebme/2OCWhfl7VgVdeSEK+ZBdko5v7tBpfYfnJOmkBLjMUeN7peKMa9bsJY80ldJCI5mBFpbCxO+//76GKdWVWET8MRWuDTK4DjUhFfl/yVtgif9xt9UTDYeTy5tPULEiDOkBY1Fl6Cfl2eWXX06ywabYTk83VNdqmj4hjoI2mI2rIdgQxxilOgwYMAC76y9PMFndlK0lOIxCk23btqGAOhMyZD4+icyFhdxeDYKpq1NlGIWArypE2RaKNHuwaf2Lr/Y5QgF/NBAJk8yMS1N1pniy5fCa6MppFR8N8I/oLrPel9VzAyu+TPtmcuri6bY1C2TjIvlumiybLuMGp/aN2z6wXXTvqsQNCxyVyYFomQRK5cSRnzp03Ni+syQkic8ZEm+NOCRsD3wxf8YNjSQri+BGORLDnYarCbWcFTTYkrVPdshbPYCyGLQKCoi2RsSgziaKkp9zc3NNWcEnCCm4Dm3r5wbImpkGMPTu3Rvf+vTTT+GwFgBwDghxlCQY3QKJhjXQYiKDMnqAyFugtXr1au2CKAWx+9dff614ozzv2r5fiammT5+OGAULqyNz9OhRig7KXd21RgVOp7kKw7EAT+TwwUNX1bv6phsb5OQa9y1fAJVCEgFFh/gqJPNI0dpFtvg58tVEmfuprPlSjq2WlHWVO+eeXvBB1meDZOYHMu0jmfRRZPx7xZNHn4mfnXt4XeGZvZFwnoSKJC1h1bNtdz/7vJxIlZpyXLYGr43YvGNnb7y3tSRnid8tHlcMu0V1SH+6xsp6Tq3oob+4f/bZZ8jgheqCUGZmJpvkdoW3KYcLAMA3a9ZMPykTeKtlGUUEo8EFDm9mKq412B1rIqD1guVt6gTaBjA9MXgMYfDw4cO04WDNwYMHM4rbsQqzBL7FkXr44YcpT4zBJjGDhTpE2rvnnnvQc+3atcrJz89nF2Qy9OcTlazVca6Ax11TVUlj1qxZ1153w3kXXez2hxweMw1HQ1hQXHYj8dhLk9cv/+Ht12TlQpk/xTZ3XOWyz3x750nCEtky0//1B1n92zsH96nu/1JO/141X0yWrKNiS01N2uCoSBBPjmQkLO/YcXdcVzmYKDZcvKJUCkArOuGb9Y1aS1quBJwBR0kM8HCdZNukB6vy1shjAcYtBDfiIONJYMBm6MrOzqZKbNKkidqOI0kX7sVUY8eOrRuF1NwQQa9NmzYIEPpACw6AQXv27CHn4ZeJiYnqDXgARtSDggB83JqBZClrtuHDhytHPyHg1PvWBx98YInRgJiEmYGNegqBbt26EepVBs1JXaBFRXPgwAEdBXF9dNY4JBrh2b5lq/lTyNn1rqlPxrK7zMgMWn5PpKZCuHgF7EWHd8S/MfDEK31l5kTZtVb2rpB1M1xLxwcWjZGvRsu00ZGRg1M7xB3q0No/f6ZU54g/v/z07vzUbeLKltzkFb1e3NG5lxxJFidhyVYeKSASysxlS+9uLQWlEnJHvFXG346JXT169GAPVNLWnxs0iIPKihUrCFOgRfiiZtO8xbYJiZQGJH/E1KwQroNvMRWw7dq1i/oQ2JAk3C1duhTX5AbaunVrBDQSqhFpUHTAfOCBB8hDdV0B4v7LmaCXCxmfanre/fr1g4lvMQMeQ5fWhLgO2QvPS0hIMCeoJT7VHSmXDh48CAfdWEvDrFb/sbGxZDX9a4NBpCav57sFC+pfeRUp+dYGt9913/0pWVm43q8/6QbF7xBnuREPnaX5a5fFN296uMMzeSNeCXwxTtZ+KZvmyZJJ/ikjPaOHnO7TOa13V5k7TQrTpeYMCS//xM9ZxzaKt1DOpH7ds8eaLr0lIVVcNgnbvGTEsMM5K37O3S2lpMIIudy3NEyTe/RqCcXFxX388cf//ve/uS/ff//9nFZiC7d9oKJGt4LMqVOnzj33XOpJa2/4HDvfvHkzxRvew2Gk4ucmR/XFWA4v0JJUpkyZwiqTJ0/WIToWv6Qqu/TSS4mT4E1SmTNnDi6CN+PByHOeNBdaFcegQYPg79y5Uz8hzVtUDQynwaJwPvzwQyoISk39tRpliPl6RJRUBw4W8HMiIWQ4TFRDI94c/vjDD58XE/P4o024Klx51TVXXH3NmeJCXJKrWIjLmFFoeEOgFXYZgNmK5PsFGa/1Wxv7+PbubUonvCXfTZUVs2TF7LKxQ9NGDCj7/CM5tl3sOZJ1KG3H8gObFhal7pVQlSv9+Phunb9+rockJIvbEXGVh6jgffaMKfMnNI7153Ip8ks4YPztWJXGFhzwRx99FLNiaMzN3mi88cYbxASOIXugF7MCCTtMS0vDgbp27cq55qQzjx5SiBMAKgQ9/dWAN0Fm2LBhmuHIT9yOFy5cSFvdSHMbk8ycOZN7Fb0sTWAku9Cg7NTLGaSAIYmzjhw5Eo9fv369/qWfaAyH84FPE+VItHpFw5sV7+uvv54DgYcx3Jzst3uFJmPmGT9+PP7NrjmIpMCzYmKurVfv5T59yotLmLNVbOu4du2DEq1y1lBg+MLeUBTN2TUH3238Bctnk4JMWbM0fdy72wf1XN6l1aK2j+0Y3K34i7GS+Isc2hjZu86xd03ejpUnty07eWBtbvIeqcmngrdln5r17vAfR42W9Gzxuo37MnO6HacXrv7u1Xeq8ij0gxLyG7/qYmXLP2hs376dc80dNj4+Xq3JcQYAApoGHN0tW01JSbF+gYUYq/GTURobGcjth7HELlPECH36a6z+EUTPipUg0QSjkKXwj7lz5y5atIi4pNUKkwO2Ls3RQRLjauXCp9od9QjFVlimsXv37tmzZ+MlpF6ELZyU0FM5HD7WVSZFFotSN7L6T+s3VJaWBd2AgSuFiSvHk07o347Nv9+HfGFP2LiNGYCF/HYJUmdXiC1PshIlca9vx/qy1YvK1i1y7FktBQliSxd7pr0osTD/eHllmsdfLJFq0yndPldZ0sEd5QcOSQUz+I2/cBrwBMMnT+dt2+d0cueLoK6Blh5tCLNCNNS4mABDWIa2ohZMbUD0Wvwvv/ySOhjTYAK1gnobMhq+sI7+e4qGDRvm5eXBscIaa2nat1bkrQ1t81ZQwUAxZjbm1/OkauNeuq5K0mXpRkPVZiGd2dp13YbOhozOY9aEBlQ80bDBZDpvELQiNQF3gHMrIW/ITXaLij9oOkQ4SNaxGw/gESHtJeIqE3+F8VcSsYXE7uNiLeDP44lEDQcSr4vhBuT+ILNHuFOihs/DDU+8gETARS4a9Pp++2vk/5+OHDnSoEED/AbY+FQTK2B69vHOVq1aIaBJ629A7ADF9TFPDmgZGav2MdDiCZtP1PgHMyHKeR4fpsfIAa/4vcY77AUHl3irxV9lCACs8a9xjH+Mxhnitm38eBE02gAW4jGn5AwEcGqgMvyXhf9naJFRgIRsRKGov8ItXrw4KyuLwIIDJSUlvfXWWyQwukh11qXtb0CmYylU5pfxUy9QYU4LLQUPIHFSUgVZlLxCOwoL/6AvQklnMLnJ8hBzjV4znhp4hMMGnqBBJAgyvfkAFU8EKQMtw/0j/zu0LFqzZk3z5s3J0tQXVAoUjSRt/bd/5G3KvIyMjFrRvwX9AS0TMMOTzPOvplWfM8KZnXhHhDeLRYMFJLQQMv8phpmOTBTBCQTAgYbhPcZj/gsqAx6ueIoWo5FilBGX/7doUQVobqAi2LJly5gxY7gMcO2ldO7du/f8+fOPHTumkrVZ4W9BdaAyybTor88f0aLCwYdAgW6DhT3AwwQMkIyEoFAhAaRk24CRMn5DKxwlS1F2KlpMiCCj6ZGI/B+UwrsmM3668AAAAABJRU5ErkJggg== alt='ALGEIBA'></font></b><color='#EB9C12'>"
+            $headerTest = @"
+                <html>
+                <head> 
+                <meta http-equiv='Content-Type' content='text/html; charset=iso-8859-1'>
+                <title>GO $Cliente</title> 
+                <STYLE TYPE="text/css">
+                <!--
+                td {
+                    font-family: Tahoma;    
+                    font-size: 11px;
+                    border-top: 1px solid #999999;
+                    border-right: 1px solid #999999;
+                    border-bottom: 1px solid #999999;
+                    border-left: 1px solid #999999;
+                    padding-top: 5px;
+                    padding-right: 0px;
+                    padding-bottom: 5px;
+                    padding-left: 0px;
+                }
+                body {
+                    margin-left: 5px;    
+                    margin-top: 5px;
+                    margin-right: 0px;
+                    margin-bottom: 10px;
+                    
+                    table {
+                        border: thin solid #000000;    
+                    }
+                    -->
+                    </style>
+                    </head>
+                    
+                    <body>
+                    $fullReport
+                    <b><font face="Arial" size="5"></font></b><hr size="7" color="#EB9C12">
+                    <font face="Arial" size="3"><b>Guia de Operaciones de Servicios | Algeiba IT |</b> <A HREF='https://www.algeiba.com/'>https://www.algeiba.com/</A></font><br>
+                    <font face="Arial" size="2">Reporte creado el dia $(Get-Date)</font>
+                    <br>
+                    <br>
+                    <table width='100%'>
+                    <tr bgcolor='#EB9C12'>
+                    <td width='10%' color='#ffffff' align='center'><B>Servidor</B></td>
+                    <td width='15%' color='#ffffff' align='center'><B>Servicio</B></td>
+                    <td width='15%' color='#ffffff' align='center'><B>Item</B></td>
+                    <td width='40%' color='#ffffff' align='center'><B>Detalles</B></td> 
+                    </tr>
+"@
+            add-content $reportPath $headerTest
+            Foreach ($test in $Tests) {
+                Add-Content $ReportPath "<tr>"
+                
+                $items = @"
+                <td align=center><B>$($Test.Servidor)</B></td> 
+                <td align=center><B>$($Test.Servicio)</B></td> 
+                <td align=center><B>$($test.Item)</B></td> 
+                <td align=center><B>$($Test.Detalles)</B></td> 
+"@
+                Add-Content $ReportPath $items
+            } # foreach
+             
+            $CloseTags = @"
+            </tr>
+            </table>
+            </body>
+            </html>
+"@
+            Add-Content $ReportPath $CloseTags
+    
+        } # if 
+             
+        
+    } # funciton New-UpcomingTaskReport
 
     function New-Report {
         [CmdletBinding()]
@@ -490,32 +588,31 @@ begin {
                   </tr>
 "@
     
-        Write-Verbose "[PROCESS] print Event Log Warnings"
-    
-    
+        Write-Verbose "[PROCESS] print Event Log Error"
+        
+        
         $Array_Error = @()
         ForEach ($objEvent in $Data.colLoggedEvents) {
             $imprime = $false	
             $valorAct = $objEvent.EventCode
-    
+            
             $existe = $false
             ForEach ($val in $Array_Error) {
                 If ( $val -eq $valorAct ) {		   		
                     $existe = $true
                     break
                 }
-    
+                
             }
             if ($existe -eq $false) {
                 $imprime = $true
                 $Array_Error += $valorAct
-    
+                
             }
-    
-    
+            
             if ($imprime -eq $true) {
-    
-                $dtmEventDate = $ObjEvent.ConvertToDateTime($objEvent.TimeWritten)
+                
+                $dtmEventDate = [Management.ManagementDateTimeConverter]::ToDateTime($objEvent.TimeWritten).tostring("dd/MM/yyyy HH:mm:ss")
                 $Report += " 					<tr>"
                 $Report += "	 					<td width='10%'>$($objEvent.EventCode)</font></td>"
                 $Report += "	 					<td width='10%'>$($objEvent.SourceName)</font></td>"
@@ -523,56 +620,58 @@ begin {
                 $Report += "	 					<td width='10%'>$($objEvent.LogFile)</font></td>"
                 $Report += "	 					<td width='55%'>$($objEvent.Message)</font></td>"
                 $Report += "  					</tr>"
-    
+                
             }
         }
-    
+        
         $Report += @"
-            </TABLE>
+        </TABLE>
         </DIV>
-    </DIV>
-    </DIV>
-    <DIV class=filler></DIV>
-    <DIV class=container>
-    <DIV class=heading2>
+        </DIV>
+        </DIV>
+        <DIV class=filler></DIV>
+        <DIV class=container>
+        <DIV class=heading2>
         <SPAN class=sectionTitle tabIndex=0>Eventos de WARNING</SPAN>
-    </DIV>
-    <DIV class=container>
+        </DIV>
+        <DIV class=container>
         <DIV class=tableDetail>
-            <TABLE>
-                  <tr>
-                    <th width='10%'><b>Event Code</b></font></th>
-                   <th width='10%'><b>Source Name</b></font></th>
-                    <th width='15%'><b>Time</b></font></th>
-                    <th width='10%'><b>Log</b></font></th>
-                    <th width='55%'><b>Message</b></font></th>
-                  </tr>
+        <TABLE>
+        <tr>
+        <th width='10%'><b>Event Code</b></font></th>
+        <th width='10%'><b>Source Name</b></font></th>
+        <th width='15%'><b>Time</b></font></th>
+        <th width='10%'><b>Log</b></font></th>
+        <th width='55%'><b>Message</b></font></th>
+        </tr>
 "@
-    
-    
-    
+        
+        
+        Write-Verbose "[PROCESS] print Event Log Warning"
+        
         $Array_warning = @()
         ForEach ($objEvent in $Data.colEvents) {
             $imprime = $false	
             $valorAct = $objEvent.EventCode
-    
+            
             $existe = $false
             ForEach ($val in $Array_warning) {
                 If ( $val -eq $valorAct ) {		   		
                     $existe = $true
                     break
                 }
-    
+                
             }
             if ($existe -eq $false) {
                 $imprime = $true
                 $Array_warning += $valorAct
-    
+                
             }
-    
-    
+            
+            
             if ($imprime -eq $true) {
-    
+                
+                $dtmEventDate = [Management.ManagementDateTimeConverter]::ToDateTime($objEvent.TimeWritten).tostring("dd/MM/yyyy HH:mm:ss")
                 $Report += " 					<tr>"
                 $Report += "	 					<td width='10%'>$($objEvent.EventCode)</font></td>"
                 $Report += "	 					<td width='10%'>$($objEvent.SourceName)</font></td>"
@@ -580,10 +679,10 @@ begin {
                 $Report += "	 					<td width='10%'>$($objEvent.LogFile)</font></td>"
                 $Report += "	 					<td width='55%'>$($objEvent.Message)</font></td>"
                 $Report += "  					</tr>"
-    
+                
             }
         }
-    
+        
         $Report += @"
             </TABLE>
         </DIV>
@@ -601,7 +700,8 @@ begin {
     
         Write-Output $Report
     
-    }
+    } # function New-Report
+
     function New-ItemTest {
         param (
             $Servicio,
@@ -624,213 +724,216 @@ begin {
 
         Write-Output $Object
     }
-    
-}
 
+    $command = {
+        Function Get-PendingUpdate { 
+            [CmdletBinding()] 
+            param( 
+                [string[]]
+                $Computername = $env:COMPUTERNAME
+            )     
+            Process { 
+                ForEach ($computer in $Computername) { 
+                    If (Test-Connection -ComputerName $computer -Count 1 -Quiet) { 
+                        Try { 
+                            #Create Session COM object 
+                            Write-Verbose "Creating COM object for WSUS Session" 
+                            $updatesession = [activator]::CreateInstance([type]::GetTypeFromProgID("Microsoft.Update.Session", $computer)) 
+                        } 
+                        Catch { 
+                            Write-Warning "$($Error[0])" 
+                            Break 
+                        } 
+         
+                        #Configure Session COM Object 
+                        Write-Verbose "Creating COM object for WSUS update Search" 
+                        $updatesearcher = $updatesession.CreateUpdateSearcher() 
+         
+                        #Configure Searcher object to look for Updates awaiting installation 
+                        Write-Verbose "Searching for WSUS updates on client" 
+                        $searchresult = $updatesearcher.Search("IsInstalled=0")     
+                     
+                        #Verify if Updates need installed 
+                        Write-Verbose "Verifing that updates are available to install" 
+                        If ($searchresult.Updates.Count -gt 0) { 
+                            #Updates are waiting to be installed 
+                            Write-Verbose "Found $($searchresult.Updates.Count) update\s!" 
+                            #Cache the count to make the For loop run faster 
+                            $count = $searchresult.Updates.Count 
+                         
+                            #Begin iterating through Updates available for installation 
+                            Write-Verbose "Iterating through list of updates" 
+                            For ($i = 0; $i -lt $Count; $i++) { 
+    
+                                $Update = $searchresult.Updates.Item($i)
+                                $Property = @{
+                                    Title = $Update.Title
+                                }
+                                $Object = New-Object PSObject -Property $Property
+    
+                                Write-Output $Object
+                            }
+                        } 
+                        Else { 
+                            #Nothing to install at this time 
+                            Write-Verbose "No updates to install." 
+                        
+                        }
+                    }
+                    Else { 
+                        #Nothing to install at this time 
+                        Write-Warning "$($c): Offline" 
+                    }  
+                }
+            }
+        }
+    
+    
+    
+        $ComputerSystem = Get-WmiObject Win32_ComputerSystem
+        
+        switch ($ComputerSystem.DomainRole) {
+            0 { $ComputerRole = "Standalone Workstation" }
+            1 { $ComputerRole = "Member Workstation" }
+            2 { $ComputerRole = "Standalone Server" }
+            3 { $ComputerRole = "Member Server" }
+            4 { $ComputerRole = "Domain Controller" }
+            5 { $ComputerRole = "Domain Controller" }
+            default { $ComputerRole = "Information not available" }
+        }
+        
+        
+        if ($ComputerRole -eq 'Domain Controller') {
+            Write-Verbose "[PROCESS] Executing commands for a domain controller"
+            $ReplSum = repadmin /replsum
+            
+            $ShowRepl = repadmin /Showrepl
+            
+            $DcDiag = dcdiag
+            
+            $fsmo = netdom /query fsmo
+            
+            $isGC = dsquery server -forest -isgc
+            
+            $time = w32tm /query /source
+            
+        }
+        
+        # querys 
+        $OperatingSystems = Get-WmiObject  Win32_OperatingSystem
+        $TimeZone = Get-WmiObject Win32_Timezone
+        
+        # type of server
+        if ($ComputerRole -like 'Standalone*') {
+            $CompType = "Computer Workgroup"
+        }
+        else {
+            $CompType = "Computer Domain"
+        }
+        
+        #LBTIME for UPTIME
+        $Uptime = $OperatingSystems.ConvertToDateTime($OperatingSystems.Lastbootuptime)
+        
+        Write-Verbose "[PROCESS] Hotfix Information"
+        $colQuickFixes = Get-WmiObject Win32_QuickFixEngineering
+        
+        Write-Verbose "[PROCESS] Logical Disks"
+        $colDisks = Get-WmiObject Win32_LogicalDisk
+        
+        Write-Verbose "[PROCESS] Network Configuration"
+        $NICCount = 0
+        $colAdapters = Get-WmiObject Win32_NetworkAdapterConfiguration
+        
+        Write-Verbose "[PROCESS] Local Shares"
+        $colShares = Get-wmiobject Win32_Share
+        
+        Write-Verbose "[PROCESS] Printers"
+        $colInstalledPrinters = Get-WmiObject Win32_Printer
+        
+        Write-Verbose "[PROCESS] Services"
+        $colListOfServices = Get-WmiObject Win32_Service
+        
+        Write-Verbose "[PROCESS] Regional Options"
+        $ObjKeyboards = Get-UICulture | Select-Object -ExpandProperty Name
+        
+        
+        $WmidtQueryDT = [System.Management.ManagementDateTimeConverter]::ToDmtfDateTime((Get-date).AddDays(-15))	
+        
+        Write-Verbose "[PROCESS] Event Log Errors"
+        $colLoggedEvents = Get-WmiObject  -query ("Select  * from Win32_NTLogEvent Where EventType=1 and TimeWritten >='" + $WmidtQueryDT + "'")
+        
+        Write-Verbose "[PROCESS] Event Log Warnings"
+        $colEvents = Get-WmiObject  -query ("Select * from Win32_NTLogEvent Where EventType=2 and TimeWritten >='" + $WmidtQueryDT + "'")
+        
+        
+        $UninstallKeys = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
+            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall')
+        $uninstallKeys = foreach ($key in (Get-ChildItem $UninstallKeys) ) {
+            
+            $Property = @{
+                DisplayName = $key.GetValue("DisplayName");
+                Publisher   = $key.GetValue("Publisher");
+            }
+            
+            $Object = New-Object PSObject -Property $Property
+            
+            Write-Output $Object
+            
+        } # Foreach
+        
+        $Programs = $UninstallKeys  | Select-Object -Unique displayname, publisher  | Where-Object { $_.DisplayName }	
+        
+        $Property = @{
+            ComputerSystem       = $ComputerSystem
+            computerRole         = $ComputerRole
+            replsum              = $ReplSum
+            Showrepl             = $ShowRepl
+            DCDiag               = $DcDiag
+            fsmo                 = $fsmo
+            isGC                 = $isGC
+            time                 = $Time
+            timeZone             = $TimeZone
+            OperatingSystems     = $OperatingSystems
+            Uptime               = $Uptime
+            colQuickFixes        = $colQuickFixes
+            colDisks             = $colDisks
+            NICCount             = $NICCount
+            colAdapters          = $colAdapters
+            colShares            = $colShares
+            colInstalledPrinters = $colInstalledPrinters
+            colListofServices    = $colListOfServices
+            ObjKeyboards         = $ObjKeyboards
+            colLoggedEvents      = $colLoggedEvents
+            colEvents            = $colEvents
+            Programs             = $Programs
+            PendingUpdates       = Get-PendingUpdate
+        }
+        
+        $Object = New-Object psobject -Property $Property   
+        
+        Write-Output $Object
+        
+    } # Command
+    
+} # begin 
 process {
+
     $tests = New-Object System.Collections.Generic.List[System.Object] 
+    $Date = (Get-Date).ToString("yyyyMMdd")
 
     Foreach ($Target in $ComputerName) {
         try {
-            $command = {
-
-                Function Get-PendingUpdate { 
-                    [CmdletBinding()] 
-                    param( 
-                        [string[]]
-                        $Computername = $env:COMPUTERNAME
-                    )     
-                    Process { 
-                        ForEach ($computer in $Computername) { 
-                            If (Test-Connection -ComputerName $computer -Count 1 -Quiet) { 
-                                Try { 
-                                    #Create Session COM object 
-                                    Write-Verbose "Creating COM object for WSUS Session" 
-                                    $updatesession = [activator]::CreateInstance([type]::GetTypeFromProgID("Microsoft.Update.Session", $computer)) 
-                                } 
-                                Catch { 
-                                    Write-Warning "$($Error[0])" 
-                                    Break 
-                                } 
-                 
-                                #Configure Session COM Object 
-                                Write-Verbose "Creating COM object for WSUS update Search" 
-                                $updatesearcher = $updatesession.CreateUpdateSearcher() 
-                 
-                                #Configure Searcher object to look for Updates awaiting installation 
-                                Write-Verbose "Searching for WSUS updates on client" 
-                                $searchresult = $updatesearcher.Search("IsInstalled=0")     
-                             
-                                #Verify if Updates need installed 
-                                Write-Verbose "Verifing that updates are available to install" 
-                                If ($searchresult.Updates.Count -gt 0) { 
-                                    #Updates are waiting to be installed 
-                                    Write-Verbose "Found $($searchresult.Updates.Count) update\s!" 
-                                    #Cache the count to make the For loop run faster 
-                                    $count = $searchresult.Updates.Count 
-                                 
-                                    #Begin iterating through Updates available for installation 
-                                    Write-Verbose "Iterating through list of updates" 
-                                    For ($i = 0; $i -lt $Count; $i++) { 
-
-                                        $Update = $searchresult.Updates.Item($i)
-                                        $Property = @{
-                                            Title = $Update.Title
-                                        }
-                                        $Object = New-Object PSObject -Property $Property
-
-                                        Write-Output $Object
-                                    }
-                                } 
-                                Else { 
-                                    #Nothing to install at this time 
-                                    Write-Verbose "No updates to install." 
-                                
-                                }
-                            }
-                            Else { 
-                                #Nothing to install at this time 
-                                Write-Warning "$($c): Offline" 
-                            }  
-                        }
-                    }
-                }
-
-
-
-                $ComputerSystem = Get-WmiObject Win32_ComputerSystem
-                
-                switch ($ComputerSystem.DomainRole) {
-                    0 { $ComputerRole = "Standalone Workstation" }
-                    1 { $ComputerRole = "Member Workstation" }
-                    2 { $ComputerRole = "Standalone Server" }
-                    3 { $ComputerRole = "Member Server" }
-                    4 { $ComputerRole = "Domain Controller" }
-                    5 { $ComputerRole = "Domain Controller" }
-                    default { $ComputerRole = "Information not available" }
-                }
-                
-                
-                if ($ComputerRole -eq 'Domain Controller') {
-                    Write-Verbose "[PROCESS] Executing commands for a domain controller"
-                    $ReplSum = repadmin /replsum
-                    
-                    $ShowRepl = repadmin /Showrepl
-                    
-                    $DcDiag = dcdiag
-                    
-                    $fsmo = netdom /query fsmo
-                    
-                    $isGC = dsquery server -forest -isgc
-                    
-                    $time = w32tm /query /source
-                    
-                }
-                
-                # querys 
-                $OperatingSystems = Get-WmiObject  Win32_OperatingSystem
-                $TimeZone = Get-WmiObject Win32_Timezone
-                
-                # type of server
-                if ($ComputerRole -like 'Standalone*') {
-                    $CompType = "Computer Workgroup"
-                }
-                else {
-                    $CompType = "Computer Domain"
-                }
-                
-                #LBTIME for UPTIME
-                $Uptime = $OperatingSystems.ConvertToDateTime($OperatingSystems.Lastbootuptime)
-                
-                Write-Verbose "[PROCESS] Hotfix Information"
-                $colQuickFixes = Get-WmiObject Win32_QuickFixEngineering
-                
-                Write-Verbose "[PROCESS] Logical Disks"
-                $colDisks = Get-WmiObject Win32_LogicalDisk
-                
-                Write-Verbose "[PROCESS] Network Configuration"
-                $NICCount = 0
-                $colAdapters = Get-WmiObject Win32_NetworkAdapterConfiguration
-                
-                Write-Verbose "[PROCESS] Local Shares"
-                $colShares = Get-wmiobject Win32_Share
-                
-                Write-Verbose "[PROCESS] Printers"
-                $colInstalledPrinters = Get-WmiObject Win32_Printer
-                
-                Write-Verbose "[PROCESS] Services"
-                $colListOfServices = Get-WmiObject Win32_Service
-                
-                Write-Verbose "[PROCESS] Regional Options"
-                $ObjKeyboards = Get-UICulture | Select-Object -ExpandProperty Name
-                
-                
-                $WmidtQueryDT = [System.Management.ManagementDateTimeConverter]::ToDmtfDateTime((Get-date).AddDays(-15))	
-                
-                Write-Verbose "[PROCESS] Event Log Errors"
-                $colLoggedEvents = Get-WmiObject  -query ("Select  * from Win32_NTLogEvent Where EventType=1 and TimeWritten >='" + $WmidtQueryDT + "'")
-                
-                Write-Verbose "[PROCESS] Event Log Warnings"
-                $colEvents = Get-WmiObject  -query ("Select * from Win32_NTLogEvent Where EventType=2 and TimeWritten >='" + $WmidtQueryDT + "'")
-                
-                
-                $UninstallKeys = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
-                    'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall')
-                $uninstallKeys = foreach ($key in (Get-ChildItem $UninstallKeys) ) {
-                    
-                    $Property = @{
-                        DisplayName = $key.GetValue("DisplayName");
-                        Publisher   = $key.GetValue("Publisher");
-                    }
-                    
-                    $Object = New-Object PSObject -Property $Property
-                    
-                    Write-Output $Object
-                    
-                } # Foreach
-                
-                $Programs = $UninstallKeys  | Select-Object -Unique displayname, publisher  | Where-Object { $_.DisplayName }	
-                
-                $Property = @{
-                    ComputerSystem       = $ComputerSystem
-                    computerRole         = $ComputerRole
-                    replsum              = $ReplSum
-                    Showrepl             = $ShowRepl
-                    DCDiag               = $DcDiag
-                    fsmo                 = $fsmo
-                    isGC                 = $isGC
-                    time                 = $Time
-                    timeZone             = $TimeZone
-                    OperatingSystems     = $OperatingSystems
-                    Uptime               = $Uptime
-                    colQuickFixes        = $colQuickFixes
-                    colDisks             = $colDisks
-                    NICCount             = $NICCount
-                    colAdapters          = $colAdapters
-                    colShares            = $colShares
-                    colInstalledPrinters = $colInstalledPrinters
-                    colListofServices    = $colListOfServices
-                    ObjKeyboards         = $ObjKeyboards
-                    colLoggedEvents      = $colLoggedEvents
-                    colEvents            = $colEvents
-                    Programs             = $Programs
-                    PendingUpdates       = Get-PendingUpdate
-                }
-                
-                $Object = New-Object psobject -Property $Property   
-                
-                Write-Output $Object
-                
-            } # Command
-			
+		
             $Target = $Target.ToUpper()
-            
+
             # execute script block
             $Params = @{
                 ComputerName     = $Target
                 ScriptBlock      = $Command
                 HideComputerName = $True
             } # hashtable
+
+            # Check computer
             IF ($Target -match "Localhost|$($env:computername)") {
                 $Params.Remove('ComputerName')
                 $Params.Remove('HideComputerName')
@@ -839,7 +942,6 @@ process {
                 $Params.credential = $Credential
             } # elseif
             
-            $Date = (Get-Date).ToString("yyyyMMdd")
             $FinalPath = (Join-Path $DestinationPath "GO_$Date" )
             
             if (-not (Test-Path $FinalPath  )) {
@@ -855,9 +957,8 @@ process {
 
 
             #Operating system dashboard
-            
-
             Write-Verbose "[PROCESS] Operating system checks"
+            
             Write-Verbose "[PROCESS] Checking free space of disks"
             Foreach ($objDisk in $Data.colDisks) {
                 if ($ObjDisk.size -gt 0) {
@@ -878,16 +979,32 @@ process {
             } # foreach
             
             Write-Verbose "[PROCESS] Checking pending updates"
-            $CantidadUpdates = ($Data.PendingUpdates | Measure-Object | Select-Object -ExpandProperty Count) 
+            $CantidadUpdates = $Data.PendingUpdates | Measure-Object | Select-Object -ExpandProperty Count 
             if ($CantidadUpdates -gt 0) {
                 Write-Verbose "[PROCESS] Adding pending updates check"
-                $ObjectUpdate = New-ItemTest -Servicio 'Sistema Operativos' -Item 'Actualizaciones Pendientes' -Servidor $Target -Detalles "Hay $CantidadUpdates actualizaciones disponibles." 
+                $ObjectUpdate = New-ItemTest -Servicio 'Sistema Operativo' -Item 'Actualizaciones Pendientes' -Servidor $Target -Detalles "Hay $CantidadUpdates actualizaciones disponibles." 
                 $tests.Add($ObjectUpdate)
-            }
+            } # if updates
+            
+            Write-Verbose "[PROCESS] Checking amount of events"
+            $CantidadEventosErrores = $data.colLoggedEvents | Select-Object -Unique eventcode | Measure-Object | Select-Object -ExpandProperty Count 
+            if ($CantidadEventosErrores -gt 0) {
+                Write-Verbose "[PROCESS] Adding error log events check"
+                $ObjectErrores = New-ItemTest -Servicio 'Sistema Operativo' -Item 'Eventos de Error' -Servidor $Target -Detalles "Se generaron $CantidadEventosErrores eventos desde la fecha $((get-date).AddDays(-15).tostring("dd/MM/yyyy"))."
+                $tests.Add($ObjectErrores)
+            } # if warning events
 
+            Write-Verbose "[PROCESS] Checking amount of events"
+            $CantidadEventosWarning = $data.colEvents | Select-Object -Unique eventcode | Measure-Object | Select-Object -ExpandProperty Count
+            if ($CantidadEventosWarning -gt 0) {
+                Write-Verbose "[PROCESS] Adding warning log events check"
+                $ObjectWarning = New-ItemTest -Servicio 'Sistema Operativo' -Item 'Eventos de Advertencia' -Servidor $Target -Detalles "Se generaron $CantidadEventosWarning eventos desde la fecha $((get-date).AddDays(-15).tostring("dd/MM/yyyy"))." 
+                $tests.Add($ObjectWarning)
+            } # if warning events
+            
             # Active Directory checks
 
-            
+            Write-Verbose "[PROCESS] Generating report for $Target " 
             $Report = New-Report -Data $Data -Target $Target
             
             $FinalDirectoryPath = Join-Path $FinalPath $Target
@@ -899,14 +1016,16 @@ process {
             
             # create txt files Domain controller
             if ($Data.ComputerRole -eq "domain controller") {
+                Write-Verbose "[PROCESS] Exporting files for domain controller: $Target"
                 $Data.showrepl | out-file -Filepath (Join-path $FinalDirectoryPath 'repadmin showrepl.txt')
                 $Data.ReplSum | out-file -FilePath (Join-Path $FinalDirectoryPath 'repadmin replsum.txt')
                 $Data.DCDiag | out-file -FilePath (Join-Path $FinalDirectoryPath 'dcdiag.txt' )
                 $Data.fsmo | out-file -FilePath (Join-Path $FinalDirectoryPath "fsmo.txt" )
                 $Data.isGC | Out-File -FilePath (Join-path $FinalDirectoryPath 'isgc.txt')
                 $Data.time | out-file -FilePath (join-path $FinalDirectoryPath 'time.txt')
+                Write-Verbose "[PROCESS] Domain controller Files were exported: $Target"
 
-            }    
+            } # if domain controllers tests
 
             $FinalFile = Join-Path $FinalDirectoryPath -ChildPath "$Target.html"
             $Report | out-file -encoding ASCII -filepath $FinalFile -Force
@@ -915,104 +1034,33 @@ process {
         catch {
             Write-Warning "Couldn't connect to $Target"
         } # try catch
+
     } # Foreach computers targets
     
-    $source = $FinalPath
-    
-    if ($tests.count -gt 0) {
+    Write-Verbose "[PROCESS] Generating check report "
+    $reportTestFile = "GO_{0}_{1}.html" -f $Cliente, $Date
+    $UpcomingTaskReportPath = Join-Path $FinalPath $reportTestFile
 
-        Write-Verbose "[PROCESS] Generating check report "
-        $reportTestFile = "GO_{0}_{1}.html" -f $Cliente, $Date
-        $ReportTest = Join-Path $FinalPath $reportTestFile
+    $UpcomingTaskParameters = @{
+        Tests      = $tests
+        ReportPath = $UpcomingTaskReportPath
+    } # hashtable parameters
 
-        if (!(Test-Path $ReportTest)) {
-            New-Item $ReportTest -ItemType File | Out-Null
-        
-        }
+    if ($PSBoundParameters.ContainsKey('Cliente')) {
+        $UpcomingTaskParameters.Cliente = $Cliente
 
-        Clear-Content $ReportTest
+    } # if contains cliente
 
-        $fullReport = "<img src=data:image/jpeg;base64,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 alt='ALGEIBA'></font></b><color='#EB9C12'>"
-        $headerTest = @"
-            <html>
-            <head> 
-            <meta http-equiv='Content-Type' content='text/html; charset=iso-8859-1'>
-            <title>GO $Cliente</title> 
-            <STYLE TYPE="text/css">
-            <!--
-            td {
-                font-family: Tahoma;    
-                font-size: 11px;
-                border-top: 1px solid #999999;
-                border-right: 1px solid #999999;
-                border-bottom: 1px solid #999999;
-                border-left: 1px solid #999999;
-                padding-top: 0px;
-                padding-right: 0px;
-                padding-bottom: 0px;
-                padding-left: 0px;
-            }
-            body {
-                margin-left: 5px;    
-                margin-top: 5px;
-                margin-right: 0px;
-                margin-bottom: 10px;
-                
-                table {
-                    border: thin solid #000000;    
-                }
-                -->
-                </style>
-                </head>
-                
-                <body>
-                $fullReport
-                <b><font face="Arial" size="5"></font></b><hr size="7" color="#EB9C12">
-                <font face="Arial" size="3"><b>Guia de Operaciones de Servicios | Algeiba IT |</b> <A HREF='https://www.algeiba.com/'>https://www.algeiba.com/</A></font><br>
-                <font face="Arial" size="2">Reporte creado el dia $(Get-Date)</font>
-                <br>
-                <br>
-                <table width='100%'>
-                <tr bgcolor='#EB9C12'>
-                <td width='10%' color='#ffffff' align='center'><B>Servidor</B></td>
-                <td width='15%' color='#ffffff' align='center'><B>Servicio</B></td>
-                <td width='15%' color='#ffffff' align='center'><B>Item</B></td>
-                <td width='40%' color='#ffffff' align='center'><B>Detalles</B></td> 
-                </tr>
-"@
-        add-content $reportTest $headerTest
-        Foreach ($test in $Tests) {
-            Add-Content $ReportTest "<tr>"
-            
-            $items = @"
-            <td align=center><B>$($Test.Servidor)</B></td> 
-            <td align=center><B>$($Test.Servicio)</B></td> 
-            <td align=center><B>$($test.Item)</B></td> 
-            <td align=center><B>$($Test.Detalles)</B></td> 
-"@
-            Add-Content $ReportTest $items
-        } # foreach
-         
-        $CloseTags = @"
-        </tr>
-        </table>
-        </body>
-        </html>
-"@
-        Add-Content $ReportTest $CloseTags
+    New-UpcomingTaskReport @UpcomingTaskParameters
+    Write-Verbose "[PROCESS] Upcoming task report was created"
 
-    } # if 
-                    
-            
-    $destinationZIP = Join-Path $DestinationPath -ChildPath ('GO_{0}.zip' -f $Date) 
-            
-    If (Test-path $destinationZIP) {Remove-item $destinationZIP}
-            
-    Add-Type -assembly "system.io.compression.filesystem"
             
     Write-Verbose "[PROCESS] Compress files"
-    [io.compression.zipfile]::CreateFromDirectory($Source, $destinationZIP) 
-
+    $destinationZIP = Join-Path $DestinationPath -ChildPath ('GO_{0}.zip' -f $Date) 
+    If (Test-path $destinationZIP) {Remove-item $destinationZIP}
+    Add-Type -assembly "system.io.compression.filesystem"
+    [io.compression.zipfile]::CreateFromDirectory($FinalPath, $destinationZIP) 
+    Write-Verbose "[PROCESS] Files were compressed"
 
 
     if ($PSBoundParameters.ContainsKey('MailData')) {
@@ -1022,9 +1070,10 @@ process {
 
             $MailData.Body = "Guia de operaciones"
             $MailData.BodyAsHtml = $True
-            $MailData.Attachments = $DestinationZIP, $ReportTest
+            $MailData.Attachments = $DestinationZIP, $UpcomingTaskReportPath
             $Maildata.ErrorAction = 'Stop'
             Send-MailMessage @Maildata 
+            Write-Verbose "[PROCESS] Email have been sent"
             
         }
         Catch {
