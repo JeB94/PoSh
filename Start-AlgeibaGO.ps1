@@ -14,11 +14,62 @@ param(
     $MailData,
 
     [String]
-    $Cliente
+    $Cliente,
+
+    [String]
+    $LogPath
 
 )
 
 begin {
+    function Write-Log {
+        [CmdletBinding()]
+        param (
+            [Parameter(Mandatory)]
+            [String]
+            $Path, 
+
+            [Parameter(Mandatory)]
+            [String]
+            $Message,
+
+            [Parameter(Mandatory)] 
+            [ValidateSet('INFO', 'ERROR', 'WARN')]
+            $Type, 
+
+            [Switch]
+            $Append
+
+        )
+        process {
+            $Date = Get-Date -Format s
+
+            if (!(Test-Path $Path)) {
+                New-Item $Path -ItemType File | Out-Null
+            }
+
+            $Output = "$Date - [$Type]: $Message"
+            if ($type -eq 'INFO') {
+                Write-Verbose $Output
+            }
+            else {
+                Write-Warning $Output
+
+            }
+
+            $Params = @{
+                FilePath    = $Path
+                InputObject = $Output
+            }    
+
+            if ($Append) {
+                $Params.Append = $True
+
+            }
+
+            Out-File @Params
+        }  # process
+    } # funciton
 
     function Check-Service {
         param (
@@ -35,7 +86,9 @@ begin {
             $timeout = 60,
     
             [String]
-            $ComputerName
+            $ComputerName,
+
+            $LogPath 
     
             
         )
@@ -70,7 +123,7 @@ begin {
             wait-job $serviceStatus -timeout $timeout | Out-Null
         
             if ($serviceStatus.state -like "Running") {
-                Write-Warning "[PROCESS] $DC `t $Argument timeout"
+                Write-Log -Message "[PROCESS] $DC `t $Argument timeout" -Type WARN -Path $LogPath -Append
                 stop-job $serviceStatus
             }
             else {
@@ -78,24 +131,24 @@ begin {
     
                 if ($PsCmdlet.ParameterSetName -eq 'Servicios') {
                     if ($serviceStatus1.status -eq "Running") {
-                        Write-Verbose "[PROCESS] $DC `t $($serviceStatus1.name) `t $($serviceStatus1.status)"
+                        Write-Log -Message "[PROCESS] $DC `t $($serviceStatus1.name) `t $($serviceStatus1.status)" -Append -Path $LogPath -Type INFO
                     }
                     elseif ($ServiceStatus1.status -eq "Stopped") { 
-                        Write-Warning "$DC `t $($serviceStatus1.name) `t $($serviceStatus1.status)"
+                        Write-Log -Type WARN -Message  "$DC `t $($serviceStatus1.name) `t $($serviceStatus1.status)" -Path $LogPath -Append
                         Write-Output "$DC `t $($serviceStatus1.name) `t $($serviceStatus1.status)"
                     }
                     else {
-                        Write-Warning "$DC `t $Service `t Not exist"
+                        Write-Log -Message "$DC `t $Service `t Not exist" -Type WARN -Path $LogPath -Append
                         
                     }
     
                 } # if parameter set
                 else {
                     if ($serviceStatus1 -match $valueString) {
-                        Write-Verbose "[PROCESS] $DC `t $Test Test passed "
+                        Write-Log -Message "[PROCESS] $DC `t $Test Test passed " -Path $LogPath -Type INFO -Append
                     }
                     else {
-                        Write-Warning "$DC `t $test Test Failed"
+                        Write-Log -Append -Message "$DC `t $test Test Failed" -Path $LogPath -Type INFO
                         Write-Output "$DC `t $test Test Failed"
                     } # else if test
                 } # else 
@@ -178,6 +231,7 @@ begin {
 "@
             add-content $reportPath $headerTest
             Foreach ($test in $Tests) {
+                Write-Verbose "[PROCESS] Adding $($Test.Item) to upcoming task report"
                 Add-Content $ReportPath "<tr>"
                 
                 $items = @"
@@ -710,7 +764,8 @@ begin {
                     $Report += "	 					<td width='10%'>$($objEvent.LogFile)</font></td>"
                     $Report += "	 					<td width='55%'>$($objEvent.Message)</font></td>"
                     $Report += "  					</tr>"
-                } catch {
+                }
+                catch {
                     Write-Warning "No events were found"
                 }
                 
@@ -777,7 +832,8 @@ begin {
                     $Report += "	 					<td width='10%'>$($objEvent.LogFile)</font></td>"
                     $Report += "	 					<td width='55%'>$($objEvent.Message)</font></td>"
                     $Report += "  					</tr>"
-                } catch {
+                }
+                catch {
                     Write-Warning "No events were found"
                 }
                 
@@ -935,10 +991,11 @@ begin {
                 Import-Module ActiveDirectory -ErrorAction Stop -Verbose:$False
                 $Forest = Get-ADForest
                 $PDCroot = (Get-ADForest).name | Get-ADDomain | Select-Object -ExpandProperty pdcemulator
-                $DomainDC = (Get-ADDomainController $Target -Server $Target).Domain
+                $DomainDC = (Get-ADDomainController $env:computername -Server $env:computername).Domain
 
             }
             catch {
+                Write-Error $_
                 Write-Warning "Couldn't import module"
             }
        
@@ -1085,7 +1142,7 @@ begin {
             colLoggedEvents      = $colLoggedEvents
             colEvents            = $colEvents
             Programs             = $Programs
-            #PendingUpdates       = Get-PendingUpdate
+            PendingUpdates       = Get-PendingUpdate
             Domain               = $DomainDC
             Forest               = $Forest.Name
             PDCRoot              = $PDCroot
@@ -1107,6 +1164,27 @@ process {
 
     # Check if a computer was analyzed
     $computersCount = 0
+    $FinalPath = (Join-Path $DestinationPath "GO_$Date" )
+
+    
+    if (-not (Test-Path $FinalPath  )) {
+        New-Item -Path $FinalPath -ItemType Directory | Out-Null
+        $folderCreated = $True
+        
+    } # if 
+
+    if (!($PSBoundParameters.ContainsKey('logpath'))) {
+        $LogFile = "GO_{0}.log" -f $Date
+        $LogPath = Join-Path $FinalPath $LogFile
+        
+    } # if logpath
+
+    if ($folderCreated) {
+        Write-Log -Path $LogPath -Message "[PROCESS] Folder $FinalPath was created" -Type INFO
+    }
+    
+
+    # Analyze computers
     Foreach ($Target in $ComputerName) {
         try {
 		
@@ -1128,24 +1206,15 @@ process {
                 $Params.credential = $Credential
             } # elseif
             
-            $FinalPath = (Join-Path $DestinationPath "GO_$Date" )
-            
-            if (-not (Test-Path $FinalPath  )) {
-                Write-Verbose "[PROCESS] Creating folder $FinalPath"
-                New-Item -Path $FinalPath -ItemType Directory | Out-Null
-                
-            } # if 
-            
-            
-            Write-Verbose "[PROCESS] Collating Detail for $Target"
+            Write-Log -Message "[PROCESS] Collating Detail for $Target" -Type INFO -Path $LogPath -Append
             
             $Data = Invoke-Command @Params -ErrorAction Stop
 
 
             #Operating system dashboard
-            Write-Verbose "[PROCESS] Operating system checks"
+            Write-Log -Message "[PROCESS] Operating system checks" -Type INFO -Path $LogPath -Append
             
-            Write-Verbose "[PROCESS] Checking free space of disks"
+            Write-Log -Message "[PROCESS] Checking free space of disks" -Type INFO -Path $LogPath -Append
             Foreach ($objDisk in $Data.colDisks) {
                 if ($ObjDisk.size -gt 0) {
 
@@ -1153,9 +1222,9 @@ process {
                     
                     if ($Percent -lt 30) {
                         
-                        $ObjectDisk = New-ItemTest -Servicio 'Sistema Operativos' -Item 'Matriz de Discos' -Servidor $Target -Detalles "$($objDisk.DeviceID) $Percent%"
+                        $ObjectDisk = New-ItemTest -Servicio 'Sistema Operativo' -Item 'Matriz de Discos' -Servidor $Target -Detalles "$($objDisk.DeviceID) $Percent%"
                         
-                        Write-Verbose "[PROCESS] Adding disk free space check"
+                        Write-Log -Message "[PROCESS] Adding disk free space check" -Type INFO -Path $LogPath -Append
 
                         $tests.Add($ObjectDisk)
                         
@@ -1164,28 +1233,28 @@ process {
                 
             } # foreach
             
-            Write-Verbose "[PROCESS] Checking pending updates"
+            Write-Log -Message "[PROCESS] Checking pending updates" -Type INFO -Path $LogPath -Append
             $CantidadUpdates = $Data.PendingUpdates | Measure-Object | Select-Object -ExpandProperty Count 
             if ($CantidadUpdates -gt 0) {
-                Write-Verbose "[PROCESS] Adding pending updates check"
                 $ObjectUpdate = New-ItemTest -Servicio 'Sistema Operativo' -Item 'Actualizaciones Pendientes' -Servidor $Target -Detalles "Hay $CantidadUpdates actualizaciones disponibles." 
                 $tests.Add($ObjectUpdate)
+                Write-Log -Message "[PROCESS] Adding pending updates check" -Type INFO -Path $LogPath -Append
             } # if updates
             
-            Write-Verbose "[PROCESS] Checking amount of events"
+            Write-Log -Message "[PROCESS] Checking amount of events" -Type INFO -Path $LogPath -Append
             $CantidadEventosErrores = $data.colLoggedEvents | Select-Object -Unique eventcode | Measure-Object | Select-Object -ExpandProperty Count 
             if ($CantidadEventosErrores -gt 0) {
-                Write-Verbose "[PROCESS] Adding error log events check"
                 $ObjectErrores = New-ItemTest -Servicio 'Sistema Operativo' -Item 'Eventos de Error' -Servidor $Target -Detalles "Se generaron $CantidadEventosErrores eventos desde la fecha $((get-date).AddDays(-15).tostring("dd/MM/yyyy"))."
                 $tests.Add($ObjectErrores)
+                Write-Log -Message "[PROCESS] Adding error log events check" -Type INFO -Path $LogPath -Append
             } # if warning events
 
-            Write-Verbose "[PROCESS] Checking amount of events"
+            Write-Log -Message "[PROCESS] Checking amount of events" -Type INFO -Path $LogPath -Append
             $CantidadEventosWarning = $data.colEvents | Select-Object -Unique eventcode | Measure-Object | Select-Object -ExpandProperty Count
             if ($CantidadEventosWarning -gt 0) {
-                Write-Verbose "[PROCESS] Adding warning log events check"
                 $ObjectWarning = New-ItemTest -Servicio 'Sistema Operativo' -Item 'Eventos de Advertencia' -Servidor $Target -Detalles "Se generaron $CantidadEventosWarning eventos desde la fecha $((get-date).AddDays(-15).tostring("dd/MM/yyyy"))." 
                 $tests.Add($ObjectWarning)
+                Write-Log -Message "[PROCESS] Adding warning log events check" -Type INFO -Path $LogPath -Append
             } # if warning events
             
             # Active Directory checks
@@ -1220,12 +1289,12 @@ process {
                         }    
                     } # if PDC target   
                     
-                    Write-Verbose "[PROCESS] Checking time sync"
+                    Write-Log -Message "[PROCESS] Checking time sync" -Append -Path $LogPath -Type INFO
                     
                     if ($failedTime) {
-                        Write-Verbose "[PROCESS] Adding error sync time"
                         $ObjectTime = New-ItemTest -Servicio 'Active Directory' -Item 'Sincronización de hora' -Servidor $Target -Detalles $failedTime 
                         $tests.Add($ObjectTime)
+                        Write-Log -Message "[PROCESS] Adding error sync time to report" -Path $LogPath -Type INFO -Append
                     }
                     
                     $DcDiagTest = 'NetLogons', 'Replications', 'Services', 'Advertising', 'FsmoCheck'
@@ -1233,31 +1302,33 @@ process {
                     $Services = 'Netlogon', 'NTDS', 'DNS', 'WAS', "W3SVC"
                     
                     Foreach ($element in ($Services)) {
-                        $Value = Check-Service -Service $element -ComputerName $Target
+                        $Value = Check-Service -Service $element -ComputerName $Target -LogPath $LogPath
                         
                         if ($Null -ne $Value) {
                             $Item = "Servicios"
                             $ObjectItem = New-ItemTest -Servicio 'Active Directory' -Item $Item   -Servidor $Target -Detalles $Value
                             $tests.Add($ObjectItem)
+                            Write-Log -Message "[PROCESS] $element was added to report." -Append -Path $LogPath -Type INFO
                         } # if null
                         
                     } #  services 
                     
                     Foreach ($diag in ($DcDiagTest)) {
-                        $ValueDCDiag = Check-Service -Test $diag -ComputerName $Target
+                        $ValueDCDiag = Check-Service -Test $diag -ComputerName $Target -LogPath $LogPath
                         
                         if ($Null -ne $ValueDCDiag) {
                             $Item = "DCDiag test $diag"
                             $ObjectItem = New-ItemTest -Servicio 'Active Directory' -Item $Item   -Servidor $Target -Detalles $ValueDCDiag
                             $tests.Add($ObjectItem)
+                            Write-Log -Message "[PROCESS] $diag was added to report." -Append -Path $LogPath -Type INFO
                         } # if null
                         
                     } #  services 
                     
                     
-                } # if domain controllers tests
+                } # if domain controllers 
                 else {
-                    Write-Warning "Active directory Module no installed on DC"
+                    Write-Log -Type WARN -Message "Active directory Module no installed on DC" -Path $LogPath -Append
                 }
             }
 
@@ -1267,105 +1338,109 @@ process {
                 IF ($Site.State -eq 'Stopped') {
                     $ObjectIIS = New-ItemTest -Servicio 'Servidor IIS' -Item 'Sitios' -Servidor $Target -Detalles "El sitio $($Site.Name) esta parado."
                     $tests.Add($ObjectIIS)
+                    Write-Log -Message "[PROCESS] Site $($Site.Name) added to report" -Path $LogPath -Type INFO -Append
+
                 } # if
     
             } # foreach
             
             # Creating reports and files            
-            Write-Verbose "[PROCESS] Generating report for $Target " 
+            Write-Log -Message "[PROCESS] Generating report for $Target"  -Path $LogPath -Type INFO -Append
             $Report = New-Report -Data $Data -Target $Target
             
             $FinalDirectoryPath = Join-Path $FinalPath $Target
             
             if (-not (Test-Path $FinalDirectoryPath)) {
-                Write-Verbose "[PROCESS] Creating folder $FinalDirectoryPath"
+                Write-Log -Type INFO -Message "[PROCESS] Creating folder $FinalDirectoryPath" -Path $LogPath -Append
                 New-Item -Path $FinalDirectoryPath -ItemType Directory | Out-Null
             } # if    
             
             $FinalFile = Join-Path $FinalDirectoryPath -ChildPath "$Target.html"
             if ($Data.ComputerRole -eq "domain controller") {
-                Write-Verbose "[PROCESS] Exporting files for domain controller: $Target"
+                Write-Log -Message "[PROCESS] Exporting files for domain controller: $Target" -Path $LogPath -Type INFO -Append
                 $Data.showrepl | out-file -Filepath (Join-path $FinalDirectoryPath 'repadmin showrepl.txt')
                 $Data.ReplSum | out-file -FilePath (Join-Path $FinalDirectoryPath 'repadmin replsum.txt')
                 $Data.DCDiag | out-file -FilePath (Join-Path $FinalDirectoryPath 'dcdiag.txt' )
                 $Data.fsmo | out-file -FilePath (Join-Path $FinalDirectoryPath "fsmo.txt" )
                 $Data.isGC | Out-File -FilePath (Join-path $FinalDirectoryPath 'isgc.txt')
                 $Data.time | out-file -FilePath (join-path $FinalDirectoryPath 'time.txt')
-                Write-Verbose "[PROCESS] Domain controller Files were exported: $Target"
-            } # if domain controllers tests
+                Write-Log -Type INFO -Message "[PROCESS] Domain controller Files were exported: $Target" -Path $LogPath -Append
+            } # if domain controllers
             
             $Report | out-file -encoding ASCII -filepath $FinalFile -Force
-            Write-Verbose "[PROCESS] Data exported for computer: $Target"
+            Write-Log -Message "[PROCESS] Data exported for computer: $Target" -Append -Path $LogPath -Type INFO
             $computersCount ++ 
         }
         catch {
-            Write-Warning "Couldn't connect to $Target"
+            Write-Log -Message "Couldn't connect to $Target" -Type WARN -Path $LogPath -Append
         } # try catch
         
     } # Foreach computers targets
     
+} # process
+    
+end {
 
     if ($computersCount -eq 0) {
-
-        Write-Warning "Failed to get any computer"
+        
+        Write-Log -Message "Failed to get any computer" -Path $LogPath -Type WARN -Append
         Break
-            
+        
     } # if computer count
-
-
-    Write-Verbose "[PROCESS] Generating check report "
+    
+    
+    Write-Log -Message "[PROCESS] Generating check report " -Path $LogPath -Append -Type INFO
     $reportTestFile = "GO_{0}_{1}.html" -f $Cliente, $Date
     $UpcomingTaskReportPath = Join-Path $FinalPath $reportTestFile
-
+    
     $UpcomingTaskParameters = @{
         Tests       = $tests
         ReportPath  = $UpcomingTaskReportPath
         ErrorAction = 'Stop'
     } # hashtable parameters
-
+    
     if ($PSBoundParameters.ContainsKey('Cliente')) {
         $UpcomingTaskParameters.Cliente = $Cliente
-
+        
     } # if contains cliente
-
-
+    
+    
     try {
         New-UpcomingTaskReport @UpcomingTaskParameters
-        Write-Verbose "[PROCESS] Upcoming task report was created"
-
+        Write-Log -Message "[PROCESS] Upcoming task report was created" -Path $LogPath -Type INFO -Append
     }
     catch {
-        Write-Warning "No Upcoming task were added. Upcoming task report have not been created"
+        Write-Log -Type WARN -Message "No Upcoming task were added. Upcoming task report have not been created" -Path $LogPath -Append
         
     } # try catch upcoming tasks report
-
-            
-    Write-Verbose "[PROCESS] Compress files"
+    
+    
+    Write-Log -Message "[PROCESS] Compress files" -Path $LogPath -Type INFO -Append
     $destinationZIP = Join-Path $DestinationPath -ChildPath ('GO_{0}.zip' -f $Date) 
     If (Test-path $destinationZIP) {Remove-item $destinationZIP}
     Add-Type -assembly "system.io.compression.filesystem"
     [io.compression.zipfile]::CreateFromDirectory($FinalPath, $destinationZIP) 
-    Write-Verbose "[PROCESS] Files were compressed"
-
-
+    Write-Log -Message "[PROCESS] Files were compressed" -Path $LogPath -Type INFO -Append
+    
+    
     if ($PSBoundParameters.ContainsKey('MailData')) {
-        Write-Verbose "[PROCESS] Sending mail"
-
+        Write-Log -Message "[PROCESS] Sending mail" -Append -Type INFO -Path $LogPath
+        
         try {
-
+            
             $MailData.Body = "Guia de operaciones"
             $MailData.BodyAsHtml = $True
             $MailData.Attachments = $DestinationZIP, $UpcomingTaskReportPath
             $Maildata.ErrorAction = 'Stop'
             Send-MailMessage @Maildata 
-            Write-Verbose "[PROCESS] Email have been sent"
+            Write-Log -Message "[PROCESS] Email have been sent" -Type INFO -Path $LogPath -Append
             
         }
         Catch {
-            Write-Warning "Couldn't send mail"
+            Write-Log -Message "Couldn't send mail" -Type WARN -Path $LogPath  -Append
             
         } # try catch
         
     } # if psbound
-
-} # process
+    
+} # end
