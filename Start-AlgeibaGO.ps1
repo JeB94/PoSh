@@ -1,4 +1,4 @@
-﻿
+﻿[CmdletBinding()]
 param( 
 
     [Parameter(Mandatory = $True)]
@@ -19,6 +19,90 @@ param(
 )
 
 begin {
+
+    function Check-Service {
+        param (
+    
+            [Parameter(ParameterSetName = 'Servicios')]
+            [String]
+            $Service,
+    
+    
+            [Parameter(ParameterSetName = 'Dcdiag')]
+            [String]
+            $Test,
+            
+            $timeout = 60,
+    
+            [String]
+            $ComputerName
+    
+            
+        )
+                
+        process {
+
+            $DC = $ComputerName
+            
+            
+            if ($PsCmdlet.ParameterSetName -eq 'Servicios') {
+                $ScriptBlock = {get-service -ComputerName $($args[0]) -Name $($args[1]) -ErrorAction SilentlyContinue} 
+                
+                $Argument = $Service
+                
+            } # if
+            else {
+                
+                $Language = @{
+                    es = "super\w+ la prueba $Test"
+                    en = "passed test $Test"
+                }
+                $UI = (Get-UICulture).Parent.Name
+                
+                $valueString = $Language[$UI]
+
+                $ScriptBlock = {dcdiag /test:$($args[1]) /s:$($args[0])}
+                $Argument = $Test
+            } # else
+    
+    
+            $serviceStatus = start-job -scriptblock $ScriptBlock -ArgumentList $DC, $Argument
+            wait-job $serviceStatus -timeout $timeout | Out-Null
+        
+            if ($serviceStatus.state -like "Running") {
+                Write-Warning "[PROCESS] $DC `t $Argument timeout"
+                stop-job $serviceStatus
+            }
+            else {
+                $serviceStatus1 = Receive-job $serviceStatus
+    
+                if ($PsCmdlet.ParameterSetName -eq 'Servicios') {
+                    if ($serviceStatus1.status -eq "Running") {
+                        Write-Verbose "[PROCESS] $DC `t $($serviceStatus1.name) `t $($serviceStatus1.status)"
+                    }
+                    elseif ($ServiceStatus1.status -eq "Stopped") { 
+                        Write-Warning "$DC `t $($serviceStatus1.name) `t $($serviceStatus1.status)"
+                        Write-Output "$DC `t $($serviceStatus1.name) `t $($serviceStatus1.status)"
+                    }
+                    else {
+                        Write-Warning "$DC `t $Service `t Not exist"
+                        
+                    }
+    
+                } # if parameter set
+                else {
+                    if ($serviceStatus1 -match $valueString) {
+                        Write-Verbose "[PROCESS] $DC `t $Test Test passed "
+                    }
+                    else {
+                        Write-Warning "$DC `t $test Test Failed"
+                        Write-Output "$DC `t $test Test Failed"
+                    } # else if test
+                } # else 
+            } # if
+        } # Process
+    } # function
+    
 
     function New-UpcomingTaskReport {
         [CmdletBinding()]
@@ -113,6 +197,9 @@ begin {
 "@
             Add-Content $ReportPath $CloseTags
     
+        }
+        else {
+            Write-Error "No tests were added."
         } # if 
              
         
@@ -612,14 +699,20 @@ begin {
             
             if ($imprime -eq $true) {
                 
-                $dtmEventDate = [Management.ManagementDateTimeConverter]::ToDateTime($objEvent.TimeWritten).tostring("dd/MM/yyyy HH:mm:ss")
-                $Report += " 					<tr>"
-                $Report += "	 					<td width='10%'>$($objEvent.EventCode)</font></td>"
-                $Report += "	 					<td width='10%'>$($objEvent.SourceName)</font></td>"
-                $Report += "	 					<td width='15%'>$dtmEventDate</font></td>"
-                $Report += "	 					<td width='10%'>$($objEvent.LogFile)</font></td>"
-                $Report += "	 					<td width='55%'>$($objEvent.Message)</font></td>"
-                $Report += "  					</tr>"
+                try {
+                    $ErrorActionPreference = 'Stop'
+                    $dtmEventDate = [Management.ManagementDateTimeConverter]::ToDateTime($objEvent.TimeWritten).tostring("dd/MM/yyyy HH:mm:ss")
+                    $ErrorActionPreference = 'Continue'
+                    $Report += " 					<tr>"
+                    $Report += "	 					<td width='10%'>$($objEvent.EventCode)</font></td>"
+                    $Report += "	 					<td width='10%'>$($objEvent.SourceName)</font></td>"
+                    $Report += "	 					<td width='15%'>$dtmEventDate</font></td>"
+                    $Report += "	 					<td width='10%'>$($objEvent.LogFile)</font></td>"
+                    $Report += "	 					<td width='55%'>$($objEvent.Message)</font></td>"
+                    $Report += "  					</tr>"
+                } catch {
+                    Write-Warning "No events were found"
+                }
                 
             }
         }
@@ -671,14 +764,22 @@ begin {
             
             if ($imprime -eq $true) {
                 
-                $dtmEventDate = [Management.ManagementDateTimeConverter]::ToDateTime($objEvent.TimeWritten).tostring("dd/MM/yyyy HH:mm:ss")
-                $Report += " 					<tr>"
-                $Report += "	 					<td width='10%'>$($objEvent.EventCode)</font></td>"
-                $Report += "	 					<td width='10%'>$($objEvent.SourceName)</font></td>"
-                $Report += "	 					<td width='15%'>$($dtmEventDate)</font></td>"
-                $Report += "	 					<td width='10%'>$($objEvent.LogFile)</font></td>"
-                $Report += "	 					<td width='55%'>$($objEvent.Message)</font></td>"
-                $Report += "  					</tr>"
+                try {
+                    $ErrorActionPreference = 'Stop'
+                    $dtmEventDate = [Management.ManagementDateTimeConverter]::ToDateTime($objEvent.TimeWritten).tostring("dd/MM/yyyy HH:mm:ss")
+                    $ErrorActionPreference = 'Continue'
+
+
+                    $Report += " 					<tr>"
+                    $Report += "	 					<td width='10%'>$($objEvent.EventCode)</font></td>"
+                    $Report += "	 					<td width='10%'>$($objEvent.SourceName)</font></td>"
+                    $Report += "	 					<td width='15%'>$($dtmEventDate)</font></td>"
+                    $Report += "	 					<td width='10%'>$($objEvent.LogFile)</font></td>"
+                    $Report += "	 					<td width='55%'>$($objEvent.Message)</font></td>"
+                    $Report += "  					</tr>"
+                } catch {
+                    Write-Warning "No events were found"
+                }
                 
             }
         }
@@ -725,6 +826,8 @@ begin {
         Write-Output $Object
     }
 
+
+    # COMMAND 
     $command = {
         Function Get-PendingUpdate { 
             [CmdletBinding()] 
@@ -816,8 +919,33 @@ begin {
             $isGC = dsquery server -forest -isgc
             
             $time = w32tm /query /source
+
+            $PDC = (($fsmo | Where-Object { $_ -like "PDC*" } ) -split "\s+")[1]  
+            try {
+                if ('ActiveDirectory' -notin (Get-Module -ListAvailable -Verbose:$False).Name) {
+                    Install-WindowsFeature Rsat-ActiveDirectory  -Verbose:$false -ErrorAction Stop
+                } # if
+
+            }
+            catch {
+                Write-Warning "Couldn't install module Active Directory"
+            } # try catch install activedirectory module
+
+            try {
+                Import-Module ActiveDirectory -ErrorAction Stop -Verbose:$False
+                $Forest = Get-ADForest
+                $PDCroot = (Get-ADForest).name | Get-ADDomain | Select-Object -ExpandProperty pdcemulator
+                $DomainDC = (Get-ADDomainController $Target -Server $Target).Domain
+
+            }
+            catch {
+                Write-Warning "Couldn't import module"
+            }
+       
             
-        }
+        } # if domain controller
+
+
         
         # querys 
         $OperatingSystems = Get-WmiObject  Win32_OperatingSystem
@@ -834,36 +962,68 @@ begin {
         #LBTIME for UPTIME
         $Uptime = $OperatingSystems.ConvertToDateTime($OperatingSystems.Lastbootuptime)
         
-        Write-Verbose "[PROCESS] Hotfix Information"
-        $colQuickFixes = Get-WmiObject Win32_QuickFixEngineering
+        function Get-InfoWmi {
+            param (
+                [Parameter(Mandatory)]
+                [String]
+                $Class,
+                
+                
+                [Parameter(Mandatory)]
+                [String]
+                $Info
+                
+            )
+            try {
+                Write-Verbose "[PROCESS] $Info"
+                $Object = Get-WmiObject $Class -ErrorAction Stop
+                Write-Output $Object
+                    
+            }
+            catch {
+                Write-Warning "Couldn't retrieve class $Class"
+                    
+            }
+                
+        } # get-infowmi
+            
+        $colQuickFixes = Get-InfoWmi -Class Win32_QuickFixEngineering -Info "Hotfix Information"
+
+        $colDisks = Get-InfoWmi -Class Win32_LogicalDisk -Info "Logical Disks"
         
-        Write-Verbose "[PROCESS] Logical Disks"
-        $colDisks = Get-WmiObject Win32_LogicalDisk
-        
-        Write-Verbose "[PROCESS] Network Configuration"
         $NICCount = 0
-        $colAdapters = Get-WmiObject Win32_NetworkAdapterConfiguration
+        $colAdapters = Get-InfoWmi -Class Win32_NetworkAdapterConfiguration -Info "Network Configuration"
         
-        Write-Verbose "[PROCESS] Local Shares"
-        $colShares = Get-wmiobject Win32_Share
+        $colShares = Get-InfoWmi -Class Win32_Share -Info "Local Shares"
         
-        Write-Verbose "[PROCESS] Printers"
-        $colInstalledPrinters = Get-WmiObject Win32_Printer
+        $colInstalledPrinters = Get-InfoWmi Win32_Printer -Info "Printers"
         
-        Write-Verbose "[PROCESS] Services"
-        $colListOfServices = Get-WmiObject Win32_Service
+        $colListOfServices = Get-InfoWmi -Class Win32_Service -Info "Services"
         
         Write-Verbose "[PROCESS] Regional Options"
         $ObjKeyboards = Get-UICulture | Select-Object -ExpandProperty Name
         
-        
         $WmidtQueryDT = [System.Management.ManagementDateTimeConverter]::ToDmtfDateTime((Get-date).AddDays(-15))	
         
-        Write-Verbose "[PROCESS] Event Log Errors"
-        $colLoggedEvents = Get-WmiObject  -query ("Select  * from Win32_NTLogEvent Where EventType=1 and TimeWritten >='" + $WmidtQueryDT + "'")
+        try {
+            Write-Verbose "[PROCESS] Event Log Errors"
+            $colLoggedEvents = Get-WmiObject  -query ("Select  * from Win32_NTLogEvent Where EventType=1 and TimeWritten >='" + $WmidtQueryDT + "'") -ErrorAction Stop
+
+        }
+        catch {
+            Write-Warning "Couldn't retrieve error events"
+            
+        } # try catch error events
         
-        Write-Verbose "[PROCESS] Event Log Warnings"
-        $colEvents = Get-WmiObject  -query ("Select * from Win32_NTLogEvent Where EventType=2 and TimeWritten >='" + $WmidtQueryDT + "'")
+        try {
+            Write-Verbose "[PROCESS] Event Log Warnings"
+            $colEvents = Get-WmiObject  -query ("Select * from Win32_NTLogEvent Where EventType=2 and TimeWritten >='" + $WmidtQueryDT + "'") -ErrorAction Stop
+            
+        }
+        catch {
+            Write-Warning "Couldn't retrieve warning events"
+            
+        } # try catch warning events
         
         
         $UninstallKeys = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
@@ -882,7 +1042,26 @@ begin {
         } # Foreach
         
         $Programs = $UninstallKeys  | Select-Object -Unique displayname, publisher  | Where-Object { $_.DisplayName }	
-        
+
+        try {
+            Import-Module WebAdministration -Verbose:$False -ErrorAction Stop
+
+            try {
+                Get-WebSite -ErrorAction Stop
+                $Sites = Get-WebSite
+
+            }
+            catch {
+                Write-Warning "Couldn't retrieve sites"
+
+            }
+
+        }
+        catch {
+            Write-Warning "Does not have WebAdministration module. Ignore message if computer is not a IIS web server"
+
+        } #  try catch
+            
         $Property = @{
             ComputerSystem       = $ComputerSystem
             computerRole         = $ComputerRole
@@ -906,7 +1085,12 @@ begin {
             colLoggedEvents      = $colLoggedEvents
             colEvents            = $colEvents
             Programs             = $Programs
-            PendingUpdates       = Get-PendingUpdate
+            #PendingUpdates       = Get-PendingUpdate
+            Domain               = $DomainDC
+            Forest               = $Forest.Name
+            PDCRoot              = $PDCroot
+            PDC                  = $PDC
+            Sites                = $Sites 
         }
         
         $Object = New-Object psobject -Property $Property   
@@ -921,6 +1105,8 @@ process {
     $tests = New-Object System.Collections.Generic.List[System.Object] 
     $Date = (Get-Date).ToString("yyyyMMdd")
 
+    # Check if a computer was analyzed
+    $computersCount = 0
     Foreach ($Target in $ComputerName) {
         try {
 		
@@ -1003,7 +1189,89 @@ process {
             } # if warning events
             
             # Active Directory checks
+            # create txt files Domain controller
+            if ($Data.ComputerRole -eq "domain controller") {
+                
+                # Testing Time syncronization
+                
+                # clear variable
+                $failedTime = $Null
+                if (!($null -in @($Data.PDC, $Data.Forest, $Data.Domain, $Data.Time, $Data.PDCRoot))) {
 
+                    if ($Data.PDC -match $target) {
+                        
+                        # is PDC, it has to sync with external NTP server
+                        if ($Data.Forest -eq $Data.Domain ) {
+                            if ($Data.Time -notmatch "pool.ntp.org|time.windows" ) {
+                                $failedTime = "El servidor es DC PDC, pero no sincroniza con NTP externo. Sincroniza con $($Data.Time)" 
+                            }
+                        }
+                        elseif (!($data.Time -match $Data.PDCRoot -and $null -ne $Data.PDCRoot )) {
+                            $failedTime = "El servidor no sincroniza con el DC PDC del dominio root ($($Data.Forest)). Sincroniza con $($Data.Time)"
+                        }                 
+                        
+                    }
+                    else {
+                        # it is not PDC, it has to sync with PDC DC
+                        if ($Data.time -notmatch $Data.PDC) {
+                            
+                            $failedTime = "El servidor no sincroniza la hora con el DC PDC ($($Data.PDC)). Sincroniza con $($Data.Time)"
+                            
+                        }    
+                    } # if PDC target   
+                    
+                    Write-Verbose "[PROCESS] Checking time sync"
+                    
+                    if ($failedTime) {
+                        Write-Verbose "[PROCESS] Adding error sync time"
+                        $ObjectTime = New-ItemTest -Servicio 'Active Directory' -Item 'Sincronización de hora' -Servidor $Target -Detalles $failedTime 
+                        $tests.Add($ObjectTime)
+                    }
+                    
+                    $DcDiagTest = 'NetLogons', 'Replications', 'Services', 'Advertising', 'FsmoCheck'
+                    # WAS and W3SVC  are IIS services
+                    $Services = 'Netlogon', 'NTDS', 'DNS', 'WAS', "W3SVC"
+                    
+                    Foreach ($element in ($Services)) {
+                        $Value = Check-Service -Service $element -ComputerName $Target
+                        
+                        if ($Null -ne $Value) {
+                            $Item = "Servicios"
+                            $ObjectItem = New-ItemTest -Servicio 'Active Directory' -Item $Item   -Servidor $Target -Detalles $Value
+                            $tests.Add($ObjectItem)
+                        } # if null
+                        
+                    } #  services 
+                    
+                    Foreach ($diag in ($DcDiagTest)) {
+                        $ValueDCDiag = Check-Service -Test $diag -ComputerName $Target
+                        
+                        if ($Null -ne $ValueDCDiag) {
+                            $Item = "DCDiag test $diag"
+                            $ObjectItem = New-ItemTest -Servicio 'Active Directory' -Item $Item   -Servidor $Target -Detalles $ValueDCDiag
+                            $tests.Add($ObjectItem)
+                        } # if null
+                        
+                    } #  services 
+                    
+                    
+                } # if domain controllers tests
+                else {
+                    Write-Warning "Active directory Module no installed on DC"
+                }
+            }
+
+
+            # IIS checks
+            Foreach ($Site in $Data.Sites) {
+                IF ($Site.State -eq 'Stopped') {
+                    $ObjectIIS = New-ItemTest -Servicio 'Servidor IIS' -Item 'Sitios' -Servidor $Target -Detalles "El sitio $($Site.Name) esta parado."
+                    $tests.Add($ObjectIIS)
+                } # if
+    
+            } # foreach
+            
+            # Creating reports and files            
             Write-Verbose "[PROCESS] Generating report for $Target " 
             $Report = New-Report -Data $Data -Target $Target
             
@@ -1012,9 +1280,9 @@ process {
             if (-not (Test-Path $FinalDirectoryPath)) {
                 Write-Verbose "[PROCESS] Creating folder $FinalDirectoryPath"
                 New-Item -Path $FinalDirectoryPath -ItemType Directory | Out-Null
-            } # if
+            } # if    
             
-            # create txt files Domain controller
+            $FinalFile = Join-Path $FinalDirectoryPath -ChildPath "$Target.html"
             if ($Data.ComputerRole -eq "domain controller") {
                 Write-Verbose "[PROCESS] Exporting files for domain controller: $Target"
                 $Data.showrepl | out-file -Filepath (Join-path $FinalDirectoryPath 'repadmin showrepl.txt')
@@ -1024,26 +1292,35 @@ process {
                 $Data.isGC | Out-File -FilePath (Join-path $FinalDirectoryPath 'isgc.txt')
                 $Data.time | out-file -FilePath (join-path $FinalDirectoryPath 'time.txt')
                 Write-Verbose "[PROCESS] Domain controller Files were exported: $Target"
-
             } # if domain controllers tests
-
-            $FinalFile = Join-Path $FinalDirectoryPath -ChildPath "$Target.html"
+            
             $Report | out-file -encoding ASCII -filepath $FinalFile -Force
             Write-Verbose "[PROCESS] Data exported for computer: $Target"
+            $computersCount ++ 
         }
         catch {
             Write-Warning "Couldn't connect to $Target"
         } # try catch
-
+        
     } # Foreach computers targets
     
+
+    if ($computersCount -eq 0) {
+
+        Write-Warning "Failed to get any computer"
+        Break
+            
+    } # if computer count
+
+
     Write-Verbose "[PROCESS] Generating check report "
     $reportTestFile = "GO_{0}_{1}.html" -f $Cliente, $Date
     $UpcomingTaskReportPath = Join-Path $FinalPath $reportTestFile
 
     $UpcomingTaskParameters = @{
-        Tests      = $tests
-        ReportPath = $UpcomingTaskReportPath
+        Tests       = $tests
+        ReportPath  = $UpcomingTaskReportPath
+        ErrorAction = 'Stop'
     } # hashtable parameters
 
     if ($PSBoundParameters.ContainsKey('Cliente')) {
@@ -1051,8 +1328,16 @@ process {
 
     } # if contains cliente
 
-    New-UpcomingTaskReport @UpcomingTaskParameters
-    Write-Verbose "[PROCESS] Upcoming task report was created"
+
+    try {
+        New-UpcomingTaskReport @UpcomingTaskParameters
+        Write-Verbose "[PROCESS] Upcoming task report was created"
+
+    }
+    catch {
+        Write-Warning "No Upcoming task were added. Upcoming task report have not been created"
+        
+    } # try catch upcoming tasks report
 
             
     Write-Verbose "[PROCESS] Compress files"
