@@ -71,7 +71,7 @@ begin {
         }  # process
     } # funciton
 
-    function Check-Service {
+    function Test-Service {
         param (
     
             [Parameter(ParameterSetName = 'Servicios')]
@@ -154,8 +154,7 @@ begin {
                 } # else 
             } # if
         } # Process
-    } # function
-    
+    } # function test-service
 
     function New-UpcomingTaskReport {
         [CmdletBinding()]
@@ -207,6 +206,7 @@ begin {
                     margin-right: 0px;
                     margin-bottom: 10px;
                     
+                    
                     table {
                         border: thin solid #000000;    
                     }
@@ -216,17 +216,17 @@ begin {
                     
                     <body>
                     $fullReport
-                    <b><font face="Arial" size="5"></font></b><hr size="7" color="#EB9C12">
-                    <font face="Arial" size="3"><b>Guia de Operaciones de Servicios | Algeiba IT |</b> <A HREF='https://www.algeiba.com/'>https://www.algeiba.com/</A></font><br>
-                    <font face="Arial" size="2">Reporte creado el dia $(Get-Date)</font>
+                    <b><font face="Calibri" size="5"></font></b><hr size="7" color="#E6472A">
+                    <font face="Calibri" size="3"><b>Guia de Operaciones de Servicios | Algeiba IT |</b> <A HREF='https://www.algeiba.com/'>https://www.algeiba.com/</A></font><br>
+                    <font face="Calibri" size="2">Reporte creado el dia $((Get-Date).toString('dd/MM/yyyy HH:mm:ss'))</font>
                     <br>
                     <br>
                     <table width='100%'>
-                    <tr bgcolor='#EB9C12'>
-                    <td width='10%' color='#ffffff' align='center'><B>Servidor</B></td>
-                    <td width='15%' color='#ffffff' align='center'><B>Servicio</B></td>
-                    <td width='15%' color='#ffffff' align='center'><B>Item</B></td>
-                    <td width='40%' color='#ffffff' align='center'><B>Detalles</B></td> 
+                    <tr bgcolor='#E6472A'>
+                        <td width='10%' color='#ffffff' align='center'><font face='Calibri' color="#fff"><B>Servidor</B></font></td>
+                    <td width='15%' color='#ffffff' align='center'><font face='Calibri'color="#fff"><b>Servicio</b></font></td>
+                    <td width='15%' color='#ffffff' align='center'><font face='Calibri'color="#fff"><B>Item</b></font></td>
+                    <td width='40%' color='#ffffff' align='center'><font face='Calibri'color="#fff"><b>Detalles</b></font></td> 
                     </tr>
 "@
             add-content $reportPath $headerTest
@@ -235,10 +235,10 @@ begin {
                 Add-Content $ReportPath "<tr>"
                 
                 $items = @"
-                <td align=center><B>$($Test.Servidor)</B></td> 
-                <td align=center><B>$($Test.Servicio)</B></td> 
-                <td align=center><B>$($test.Item)</B></td> 
-                <td align=center><B>$($Test.Detalles)</B></td> 
+                <td align=center><font face='Calibri'><b>$($Test.Servidor)</B></font></td> 
+                <td align=center><font face='Calibri'>$($Test.Servicio)</font></td> 
+                <td align=center><font face='Calibri'>$($test.Item)</font></td> 
+                <td align=center><font face='calibri'>$($Test.Detalles)</font></td> 
 "@
                 Add-Content $ReportPath $items
             } # foreach
@@ -880,7 +880,7 @@ begin {
         $Object = New-Object PSObject -Property $Property
 
         Write-Output $Object
-    }
+    } # function new-itemtest
 
 
     # COMMAND 
@@ -892,62 +892,72 @@ begin {
                 $Computername = $env:COMPUTERNAME
             )     
             Process { 
-                ForEach ($computer in $Computername) { 
-                    If (Test-Connection -ComputerName $computer -Count 1 -Quiet) { 
-                        Try { 
-                            #Create Session COM object 
-                            Write-Verbose "Creating COM object for WSUS Session" 
-                            $updatesession = [activator]::CreateInstance([type]::GetTypeFromProgID("Microsoft.Update.Session", $computer)) 
-                        } 
-                        Catch { 
-                            Write-Warning "$($Error[0])" 
-                            Break 
-                        } 
+
+                $ErrorActionPreference = 'Stop'
+                try {
+
+                    ForEach ($computer in $Computername) { 
+
+                        If (Test-Connection -ComputerName $computer -Count 1 -Quiet -ErrorAction Stop) { 
+                            Try { 
+                                #Create Session COM object 
+                                Write-Verbose "Creating COM object for WSUS Session" 
+                                $updatesession = [activator]::CreateInstance([type]::GetTypeFromProgID("Microsoft.Update.Session", $computer)) 
+                            } 
+                            Catch { 
+                                Write-Warning "$($Error[0])" 
+                                Break 
+                            } 
          
-                        #Configure Session COM Object 
-                        Write-Verbose "Creating COM object for WSUS update Search" 
-                        $updatesearcher = $updatesession.CreateUpdateSearcher() 
-         
-                        #Configure Searcher object to look for Updates awaiting installation 
-                        Write-Verbose "Searching for WSUS updates on client" 
-                        $searchresult = $updatesearcher.Search("IsInstalled=0")     
+                            #Configure Session COM Object 
+                            Write-Verbose "Creating COM object for WSUS update Search" 
+                            $updatesearcher = $updatesession.CreateUpdateSearcher() 
+                        
+                            #Configure Searcher object to look for Updates awaiting installation 
+                            Write-Verbose "Searching for WSUS updates on client" 
+                            $searchresult = $updatesearcher.Search("IsInstalled=0")     
                      
-                        #Verify if Updates need installed 
-                        Write-Verbose "Verifing that updates are available to install" 
-                        If ($searchresult.Updates.Count -gt 0) { 
-                            #Updates are waiting to be installed 
-                            Write-Verbose "Found $($searchresult.Updates.Count) update\s!" 
-                            #Cache the count to make the For loop run faster 
-                            $count = $searchresult.Updates.Count 
-                         
-                            #Begin iterating through Updates available for installation 
-                            Write-Verbose "Iterating through list of updates" 
-                            For ($i = 0; $i -lt $Count; $i++) { 
-    
-                                $Update = $searchresult.Updates.Item($i)
-                                $Property = @{
-                                    Title = $Update.Title
+                            #Verify if Updates need installed 
+                            Write-Verbose "Verifing that updates are available to install" 
+                            If ($searchresult.Updates.Count -gt 0) { 
+                                #Updates are waiting to be installed 
+                                Write-Verbose "Found $($searchresult.Updates.Count) update\s!" 
+                                #Cache the count to make the For loop run faster 
+                                $count = $searchresult.Updates.Count 
+                            
+                                #Begin iterating through Updates available for installation 
+                                Write-Verbose "Iterating through list of updates" 
+                                For ($i = 0; $i -lt $Count; $i++) { 
+                                
+                                    $Update = $searchresult.Updates.Item($i)
+                                    $Property = @{
+                                        Title = $Update.Title
+                                    }
+                                    $Object = New-Object PSObject -Property $Property
+                                
+                                    Write-Output $Object
                                 }
-                                $Object = New-Object PSObject -Property $Property
-    
-                                Write-Output $Object
+                            } 
+                            Else { 
+                                #Nothing to install at this time 
+                                Write-Verbose "No updates to install." 
+                            
                             }
-                        } 
+                        }
                         Else { 
                             #Nothing to install at this time 
-                            Write-Verbose "No updates to install." 
-                        
-                        }
-                    }
-                    Else { 
-                        #Nothing to install at this time 
-                        Write-Warning "$($c): Offline" 
-                    }  
+                            Write-Warning "$($c): Offline" 
+                        }  
+                    } # foreach
                 }
+                catch {
+                    Write-Error $_
+
+                    $ErrorActionPreference = 'Continue'
+
+                } # try catch
             }
-        }
-    
-    
+        } # function pending updates
     
         $ComputerSystem = Get-WmiObject Win32_ComputerSystem
         
@@ -959,7 +969,7 @@ begin {
             4 { $ComputerRole = "Domain Controller" }
             5 { $ComputerRole = "Domain Controller" }
             default { $ComputerRole = "Information not available" }
-        }
+        } # domain role switch
         
         
         if ($ComputerRole -eq 'Domain Controller') {
@@ -997,28 +1007,13 @@ begin {
             catch {
                 Write-Error $_
                 Write-Warning "Couldn't import module"
-            }
+            } # try catch active directory module
        
             
         } # if domain controller
 
-
         
         # querys 
-        $OperatingSystems = Get-WmiObject  Win32_OperatingSystem
-        $TimeZone = Get-WmiObject Win32_Timezone
-        
-        # type of server
-        if ($ComputerRole -like 'Standalone*') {
-            $CompType = "Computer Workgroup"
-        }
-        else {
-            $CompType = "Computer Domain"
-        }
-        
-        #LBTIME for UPTIME
-        $Uptime = $OperatingSystems.ConvertToDateTime($OperatingSystems.Lastbootuptime)
-        
         function Get-InfoWmi {
             param (
                 [Parameter(Mandatory)]
@@ -1044,6 +1039,20 @@ begin {
                 
         } # get-infowmi
             
+        $OperatingSystems = Get-WmiObject  Win32_OperatingSystem
+        $TimeZone = Get-WmiObject Win32_Timezone
+        
+        # type of server
+        if ($ComputerRole -like 'Standalone*') {
+            $CompType = "Computer Workgroup"
+        }
+        else {
+            $CompType = "Computer Domain"
+        }
+        
+        #LBTIME for UPTIME
+        $Uptime = $OperatingSystems.ConvertToDateTime($OperatingSystems.Lastbootuptime)
+        
         $colQuickFixes = Get-InfoWmi -Class Win32_QuickFixEngineering -Info "Hotfix Information"
 
         $colDisks = Get-InfoWmi -Class Win32_LogicalDisk -Info "Logical Disks"
@@ -1053,7 +1062,7 @@ begin {
         
         $colShares = Get-InfoWmi -Class Win32_Share -Info "Local Shares"
         
-        $colInstalledPrinters = Get-InfoWmi Win32_Printer -Info "Printers"
+        $colInstalledPrinters = Get-InfoWmi -Class Win32_Printer -Info "Printers"
         
         $colListOfServices = Get-InfoWmi -Class Win32_Service -Info "Services"
         
@@ -1105,7 +1114,7 @@ begin {
 
             try {
                 Get-WebSite -ErrorAction Stop
-                $Sites = Get-WebSite
+                $Sites = Get-WebSite -ErrorAction Stop
 
             }
             catch {
@@ -1118,7 +1127,32 @@ begin {
             Write-Warning "Does not have WebAdministration module. Ignore message if computer is not a IIS web server"
 
         } #  try catch
+
+
+        # certificates
+        try {
+            $Certificate = Get-ChildItem -Recurse cert:\localmachine\my -ErrorAction Stop  |
+                Where-Object {$_.notafter -gt (Get-date) -and $_.notafter -lt (get-date).AddDays(60) } |
+                Select-Object friendlyname, Subject, Issuer, notAfter
             
+        }
+        catch {
+            Write-Error $_
+            Write-Warning  "Couldn't retrieve certificates"
+
+        } # try catch certificates
+
+        # Updates
+        try {
+            $updates = Get-PendingUpdate -ErrorAction Stop
+
+        }
+        catch {
+            Write-Warning "[PROCESS] Couldn't retrieve updates "
+            
+        } # try catch updates
+
+
         $Property = @{
             ComputerSystem       = $ComputerSystem
             computerRole         = $ComputerRole
@@ -1142,13 +1176,14 @@ begin {
             colLoggedEvents      = $colLoggedEvents
             colEvents            = $colEvents
             Programs             = $Programs
-            PendingUpdates       = Get-PendingUpdate
+            PendingUpdates       = $updates
             Domain               = $DomainDC
             Forest               = $Forest.Name
             PDCRoot              = $PDCroot
             PDC                  = $PDC
             Sites                = $Sites 
-        }
+            Certificate          = $Certificate
+        } # property
         
         $Object = New-Object psobject -Property $Property   
         
@@ -1157,6 +1192,8 @@ begin {
     } # Command
     
 } # begin 
+
+
 process {
 
     $tests = New-Object System.Collections.Generic.List[System.Object] 
@@ -1183,7 +1220,6 @@ process {
         Write-Log -Path $LogPath -Message "[PROCESS] Folder $FinalPath was created" -Type INFO
     }
     
-
     # Analyze computers
     Foreach ($Target in $ComputerName) {
         try {
@@ -1209,7 +1245,6 @@ process {
             Write-Log -Message "[PROCESS] Collating Detail for $Target" -Type INFO -Path $LogPath -Append
             
             $Data = Invoke-Command @Params -ErrorAction Stop
-
 
             #Operating system dashboard
             Write-Log -Message "[PROCESS] Operating system checks" -Type INFO -Path $LogPath -Append
@@ -1298,11 +1333,12 @@ process {
                     }
                     
                     $DcDiagTest = 'NetLogons', 'Replications', 'Services', 'Advertising', 'FsmoCheck'
+
                     # WAS and W3SVC  are IIS services
                     $Services = 'Netlogon', 'NTDS', 'DNS', 'WAS', "W3SVC"
                     
                     Foreach ($element in ($Services)) {
-                        $Value = Check-Service -Service $element -ComputerName $Target -LogPath $LogPath
+                        $Value = Test-Service -Service $element -ComputerName $Target -LogPath $LogPath
                         
                         if ($Null -ne $Value) {
                             $Item = "Servicios"
@@ -1314,7 +1350,7 @@ process {
                     } #  services 
                     
                     Foreach ($diag in ($DcDiagTest)) {
-                        $ValueDCDiag = Check-Service -Test $diag -ComputerName $Target -LogPath $LogPath
+                        $ValueDCDiag = Test-Service -Test $diag -ComputerName $Target -LogPath $LogPath
                         
                         if ($Null -ne $ValueDCDiag) {
                             $Item = "DCDiag test $diag"
@@ -1330,7 +1366,7 @@ process {
                 else {
                     Write-Log -Type WARN -Message "Active directory Module no installed on DC" -Path $LogPath -Append
                 }
-            }
+            } # domain controller
 
 
             # IIS checks
@@ -1343,7 +1379,17 @@ process {
                 } # if
     
             } # foreach
-            
+
+            # Certificates
+            if (($Data.Certificado | Measure-Object | Select-Object -ExpandProperty Count ) -gt 0  ) {
+                Foreach ($Certificate in $Data.Certificate) {
+                    $ObjectCert = New-ItemTest -Servicio "Sistema Operativo" -Item  "Certificados" -Servidor $Target -Detalles "El certificado $($Data.Certificate.FriendlyName) expira el dia $($Data.Certificate.NotAfter.toString('dd/MM/yyyy'))"
+                    $Tests.Add($ObjectCert)
+                    Write-Log -Message "[PROCESS] Certificado $($Data.Certificate.FriendlyName) added" -Append -Path $LogPath -Type INFO
+                }  # certificates
+            } # if 
+
+
             # Creating reports and files            
             Write-Log -Message "[PROCESS] Generating report for $Target"  -Path $LogPath -Type INFO -Append
             $Report = New-Report -Data $Data -Target $Target
