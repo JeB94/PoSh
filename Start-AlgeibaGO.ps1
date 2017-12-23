@@ -1013,6 +1013,8 @@ begin {
         } # if domain controller
 
         
+        
+        
         # querys 
         function Get-InfoWmi {
             param (
@@ -1035,80 +1037,120 @@ begin {
             catch {
                 Write-Warning "Couldn't retrieve class $Class"
                     
-            }
+            } # try catch
                 
         } # get-infowmi
             
-        $OperatingSystems = Get-WmiObject  Win32_OperatingSystem
-        $TimeZone = Get-WmiObject Win32_Timezone
-        
-        # type of server
-        if ($ComputerRole -like 'Standalone*') {
-            $CompType = "Computer Workgroup"
-        }
-        else {
-            $CompType = "Computer Domain"
-        }
-        
-        #LBTIME for UPTIME
+        # Querys wmi
+        $OperatingSystems = Get-InfoWmi -Class Win32_OperatingSystem -Info "Operating System"
+            
+        $TimeZone = Get-InfoWmi -Class Win32_Timezone -Info "Time Zone"
+            
         $Uptime = $OperatingSystems.ConvertToDateTime($OperatingSystems.Lastbootuptime)
-        
+            
         $colQuickFixes = Get-InfoWmi -Class Win32_QuickFixEngineering -Info "Hotfix Information"
-
+            
         $colDisks = Get-InfoWmi -Class Win32_LogicalDisk -Info "Logical Disks"
-        
+            
         $NICCount = 0
         $colAdapters = Get-InfoWmi -Class Win32_NetworkAdapterConfiguration -Info "Network Configuration"
-        
+            
         $colShares = Get-InfoWmi -Class Win32_Share -Info "Local Shares"
-        
+            
         $colInstalledPrinters = Get-InfoWmi -Class Win32_Printer -Info "Printers"
-        
+            
         $colListOfServices = Get-InfoWmi -Class Win32_Service -Info "Services"
-        
+            
         Write-Verbose "[PROCESS] Regional Options"
         $ObjKeyboards = Get-UICulture | Select-Object -ExpandProperty Name
-        
+            
         $WmidtQueryDT = [System.Management.ManagementDateTimeConverter]::ToDmtfDateTime((Get-date).AddDays(-15))	
-        
+            
         try {
             Write-Verbose "[PROCESS] Event Log Errors"
             $colLoggedEvents = Get-WmiObject  -query ("Select  * from Win32_NTLogEvent Where EventType=1 and TimeWritten >='" + $WmidtQueryDT + "'") -ErrorAction Stop
-
+                
         }
         catch {
             Write-Warning "Couldn't retrieve error events"
-            
+                
         } # try catch error events
-        
+            
         try {
             Write-Verbose "[PROCESS] Event Log Warnings"
             $colEvents = Get-WmiObject  -query ("Select * from Win32_NTLogEvent Where EventType=2 and TimeWritten >='" + $WmidtQueryDT + "'") -ErrorAction Stop
-            
+                
         }
         catch {
             Write-Warning "Couldn't retrieve warning events"
-            
+                
         } # try catch warning events
-        
-        
-        $UninstallKeys = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
-            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall')
-        $uninstallKeys = foreach ($key in (Get-ChildItem $UninstallKeys) ) {
             
-            $Property = @{
-                DisplayName = $key.GetValue("DisplayName");
-                Publisher   = $key.GetValue("Publisher");
-            }
-            
-            $Object = New-Object PSObject -Property $Property
-            
-            Write-Output $Object
-            
-        } # Foreach
-        
-        $Programs = $UninstallKeys  | Select-Object -Unique displayname, publisher  | Where-Object { $_.DisplayName }	
+        # hyper-V
+        try {
 
+            $HostServices = "vmms|vmcompute"
+
+            if ($colListOfServices -match $HostServices) {
+                Write-Verbose "[PROCESS] Hyper-V host found"
+                try {
+                    Import-Module "Hyper-V"  -ErrorAction Stop
+                    $ListVM = Get-VM -ErrorAction Stop
+
+                    $vm = New-Object 'System.Collections.Generic.List[System.Object]'
+                    foreach ($LVM in  $ListVM) {
+
+                        $ParamsVM = @{
+                            Name               = $Lvm.name
+                            IntegrationService = $Lvm.vmIntegrationService
+                            State              = $Lvm.state
+                        } 
+
+                        $VMObject = New-Object PSObject -Property $ParamsVM
+                        $vm.add($VMObject)
+
+                    } # foreach
+                }
+                catch {
+                    Write-Warning "Couldn't retrieve VMs"
+
+                } # try catch inner
+
+            }
+
+        }
+        catch {
+
+            Write-Warning "Server is not a Hyper-V Host"
+                
+        } # try catch hyper-V
+            
+        # Programs
+        try {
+                
+            $UninstallKeys = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
+                'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall')
+            $uninstallKeys = foreach ($key in (Get-ChildItem $UninstallKeys -ErrorAction Stop ) ) {
+                    
+                $Property = @{
+                    DisplayName = $key.GetValue("DisplayName");
+                    Publisher   = $key.GetValue("Publisher");
+                }
+                    
+                $Object = New-Object PSObject -Property $Property
+                    
+                Write-Output $Object
+                    
+            } # Foreach
+                
+            $Programs = $UninstallKeys  | Select-Object -Unique displayname, publisher  | Where-Object { $_.DisplayName }	
+        }
+        catch {
+            Write-Warning "Couldn't retrieve programs"
+                
+        } # try catch programs
+            
+        # IIS
         try {
             Import-Module WebAdministration -Verbose:$False -ErrorAction Stop
 
@@ -1183,6 +1225,7 @@ begin {
             PDC                  = $PDC
             Sites                = $Sites 
             Certificate          = $Certificate
+            VM                   = $VM
         } # property
         
         $Object = New-Object psobject -Property $Property   
@@ -1388,6 +1431,44 @@ process {
                     Write-Log -Message "[PROCESS] Certificado $($Data.Certificate.FriendlyName) added" -Append -Path $LogPath -Type INFO
                 }  # certificates
             } # if 
+
+            
+            #  Hyper-V
+            if ($Data.VM.count -gt 0) {
+                
+                Foreach ($vm in $Data.VM ) {
+
+                    if ($vm.State -eq 'off') {
+                        $ObjectVMOff = New-ItemTest -Servicio 'Hyper-V' -Item 'Estado Maquinas Virtual'  -Servidor $Target -Detalles "La maquina virtual $($vm.Name) se encuentra apagada."
+                        $tests.Add($ObjectVMOff)
+                        Write-Log -Message "[PROCESS] VM $($vm.Name) is turned off" -Path $LogPath -Type INFO -Path $LogPath
+                    } # if
+                    
+                    foreach ($integratedService in $Vm.integrationservice) {
+                        if ($integratedService.enabled -eq $False) {
+                            if ($integratedService.Name -eq 'Time Synchronization' -and $Data.ComputerRole -match 'domain controller|member') {
+                                Write-Log -Path $LogPath -Message '[PROCESS] VM DC has time synchronization disabled.' -Type INFO -Append
+                                Continue 
+                            } # if 
+                            
+                            $objectVMService = New-ItemTest -Servicio 'Hyper-V' -Item 'Servicios de Integracion' -Servidor $Target -Detalles "La maquina virtual $($vm.name) no tiene habilitado el servicio $($integratedService.Name)"
+                            $tests.Add($objectVMService)
+                            Write-Log -Message "[PROCESS] VM $($integratedService.Name) is disabled" -Type INFO -Path $LogPath -Append
+                            
+                        }
+                        else {
+                            if ($integratedService.Name -eq 'Time Synchronization' -and $Data.ComputerRole -match 'domain controller|member') {
+                                Write-Log -Path $LogPath -Message '[PROCESS] VM DC has time synchronization enabled.' -Type INFO -Append
+                                $ObjectVMTime = New-ItemTest -Servicio 'Hiper-V' -Item 'Servicios de Integracion' -Servidor $Target -Detalles "La maquina virtual $($vm.name) tiene habilitado el servicio $($integratedService.Name). El servicio deberia estar deshabilitado."
+                                $tests.Add($ObjectVMTime)
+                            } # if 
+
+                        }
+                    } # foreach services
+
+                } # foreach
+
+            } # hyper v
 
 
             # Creating reports and files            
