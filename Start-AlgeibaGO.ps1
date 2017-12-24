@@ -8,7 +8,7 @@ param(
     [String]
     $DestinationPath = $Env:USERPROFILE,
 	
-    [PSCredential]
+    [System.Management.Automation.PSCredential]
     $Credential,
 
     $MailData,
@@ -25,15 +25,15 @@ begin {
     function Write-Log {
         [CmdletBinding()]
         param (
-            [Parameter(Mandatory)]
+            [Parameter(Mandatory = $True)]
             [String]
             $Path, 
 
-            [Parameter(Mandatory)]
+            [Parameter(Mandatory = $True)]
             [String]
             $Message,
 
-            [Parameter(Mandatory)] 
+            [Parameter(Mandatory = $True)] 
             [ValidateSet('INFO', 'ERROR', 'WARN')]
             $Type, 
 
@@ -190,7 +190,7 @@ begin {
                 <!--
                 td {
                     font-family: Tahoma;    
-                    font-size: 11px;
+                    font-size: 13px;
                     border-top: 1px solid #999999;
                     border-right: 1px solid #999999;
                     border-bottom: 1px solid #999999;
@@ -263,7 +263,7 @@ begin {
         [CmdletBinding()]
         param (
     
-            [Parameter(Mandatory)]
+            [Parameter(Mandatory = $True)]
             $Data,
     
             [String]
@@ -885,79 +885,85 @@ begin {
 
     # COMMAND 
     $command = {
-        Function Get-PendingUpdate { 
-            [CmdletBinding()] 
-            param( 
-                [string[]]
-                $Computername = $env:COMPUTERNAME
-            )     
-            Process { 
 
-                $ErrorActionPreference = 'Stop'
-                try {
+        $scriptblockUpdates = {
 
-                    ForEach ($computer in $Computername) { 
-
-                        If (Test-Connection -ComputerName $computer -Count 1 -Quiet -ErrorAction Stop) { 
-                            Try { 
-                                #Create Session COM object 
-                                Write-Verbose "Creating COM object for WSUS Session" 
-                                $updatesession = [activator]::CreateInstance([type]::GetTypeFromProgID("Microsoft.Update.Session", $computer)) 
-                            } 
-                            Catch { 
-                                Write-Warning "$($Error[0])" 
-                                Break 
-                            } 
-         
-                            #Configure Session COM Object 
-                            Write-Verbose "Creating COM object for WSUS update Search" 
-                            $updatesearcher = $updatesession.CreateUpdateSearcher() 
+            Function Get-PendingUpdate { 
+                [CmdletBinding()] 
+                param( 
+                    [string[]]
+                    $Computername = $env:COMPUTERNAME
+                )     
+                Process { 
+                
+                    $ErrorActionPreference = 'Stop'
+                    try {
+                    
+                        ForEach ($computer in $Computername) { 
                         
-                            #Configure Searcher object to look for Updates awaiting installation 
-                            Write-Verbose "Searching for WSUS updates on client" 
-                            $searchresult = $updatesearcher.Search("IsInstalled=0")     
-                     
-                            #Verify if Updates need installed 
-                            Write-Verbose "Verifing that updates are available to install" 
-                            If ($searchresult.Updates.Count -gt 0) { 
-                                #Updates are waiting to be installed 
-                                Write-Verbose "Found $($searchresult.Updates.Count) update\s!" 
-                                #Cache the count to make the For loop run faster 
-                                $count = $searchresult.Updates.Count 
+                            If (Test-Connection -ComputerName $computer -Count 1 -Quiet -ErrorAction Stop) { 
+                                Try { 
+                                    #Create Session COM object 
+                                    Write-Verbose "Creating COM object for WSUS Session" 
+                                    $updatesession = [activator]::CreateInstance([type]::GetTypeFromProgID("Microsoft.Update.Session", $computer)) 
+                                } 
+                                Catch { 
+                                    Write-Warning "$($Error[0])" 
+                                    Break 
+                                } 
                             
-                                #Begin iterating through Updates available for installation 
-                                Write-Verbose "Iterating through list of updates" 
-                                For ($i = 0; $i -lt $Count; $i++) { 
+                                #Configure Session COM Object 
+                                Write-Verbose "Creating COM object for WSUS update Search" 
+                                $updatesearcher = $updatesession.CreateUpdateSearcher() 
+                        
+                                #Configure Searcher object to look for Updates awaiting installation 
+                                Write-Verbose "Searching for WSUS updates on client" 
+                                $searchresult = $updatesearcher.Search("IsInstalled=0")     
+                            
+                                #Verify if Updates need installed 
+                                Write-Verbose "Verifing that updates are available to install" 
+                                If ($searchresult.Updates.Count -gt 0) { 
+                                    #Updates are waiting to be installed 
+                                    Write-Verbose "Found $($searchresult.Updates.Count) update\s!" 
+                                    #Cache the count to make the For loop run faster 
+                                    $count = $searchresult.Updates.Count 
                                 
-                                    $Update = $searchresult.Updates.Item($i)
-                                    $Property = @{
-                                        Title = $Update.Title
+                                    #Begin iterating through Updates available for installation 
+                                    Write-Verbose "Iterating through list of updates" 
+                                    For ($i = 0; $i -lt $Count; $i++) { 
+                                    
+                                        $Update = $searchresult.Updates.Item($i)
+                                        $Property = @{
+                                            Title = $Update.Title
+                                        }
+                                        $Object = New-Object PSObject -Property $Property
+                                    
+                                        Write-Output $Object
                                     }
-                                    $Object = New-Object PSObject -Property $Property
+                                } 
+                                Else { 
+                                    #Nothing to install at this time 
+                                    Write-Verbose "No updates to install." 
                                 
-                                    Write-Output $Object
                                 }
-                            } 
+                            }
                             Else { 
                                 #Nothing to install at this time 
-                                Write-Verbose "No updates to install." 
-                            
-                            }
-                        }
-                        Else { 
-                            #Nothing to install at this time 
-                            Write-Warning "$($c): Offline" 
-                        }  
-                    } # foreach
+                                Write-Warning "$($c): Offline" 
+                            }  
+                        } # foreach
+                    }
+                    catch {
+                        Write-Error $_
+                    
+                        $ErrorActionPreference = 'Continue'
+                    
+                    } # try catch
                 }
-                catch {
-                    Write-Error $_
+            } # function pending updates
 
-                    $ErrorActionPreference = 'Continue'
-
-                } # try catch
-            }
-        } # function pending updates
+            Get-PendingUpdate -ErrorAction Stop
+        } # script block updates
     
         $ComputerSystem = Get-WmiObject Win32_ComputerSystem
         
@@ -987,15 +993,6 @@ begin {
             $time = w32tm /query /source
 
             $PDC = (($fsmo | Where-Object { $_ -like "PDC*" } ) -split "\s+")[1]  
-            try {
-                if ('ActiveDirectory' -notin (Get-Module -ListAvailable -Verbose:$False).Name) {
-                    Install-WindowsFeature Rsat-ActiveDirectory  -Verbose:$false -ErrorAction Stop
-                } # if
-
-            }
-            catch {
-                Write-Warning "Couldn't install module Active Directory"
-            } # try catch install activedirectory module
 
             try {
                 Import-Module ActiveDirectory -ErrorAction Stop -Verbose:$False
@@ -1027,12 +1024,12 @@ begin {
         # querys 
         function Get-InfoWmi {
             param (
-                [Parameter(Mandatory)]
+                [Parameter(Mandatory = $True)]
                 [String]
                 $Class,
                 
                 
-                [Parameter(Mandatory)]
+                [Parameter(Mandatory = $True)]
                 [String]
                 $Info
                 
@@ -1142,7 +1139,46 @@ begin {
 
         }
         catch {
-            Write-Warning "Couldn't retrieve firewall profiles"
+            try {
+                $GetFirewallProfiles = netsh advfirewall show allprofiles state | select-string "state|estado"
+
+                $ProfileTable = @{
+                    0 = 'Domain'
+                    1 = 'Private'
+                    2 = 'Public'
+                }
+
+                $CountProfile = 0
+                $FirewallProfiles = New-Object System.Collections.Generic.List[System.Object]
+                Foreach ($p in $GetFirewallProfiles) {
+                    $Value = $p -replace "\w+\s+(\w+)", '$1'
+
+                    $FirewallProperties = @{
+                        Name = $ProfileTable[$CountProfile]
+                    }
+                    
+                    if ($Value -match 'ACTIVAR|ON') {
+                        $FirewallProperties.Enabled = $True
+                        $ObjectFirewallProfile = New-Object PSObject -Property $FirewallProperties
+                        $FirewallProfiles.Add($ObjectFirewallProfile)
+                        
+                    }
+                    elseif ($Value -match 'DESHABILITAR|OFF') {
+                        $FirewallProperties.Enabled = $False
+                        $ObjectFirewallProfile = New-Object PSObject -Property $FirewallProperties
+                        $FirewallProfiles.Add($ObjectFirewallProfile)
+                        
+                    } # else if
+                    
+                    $CountProfile ++
+                } # foreach
+
+            }
+            catch {
+                Write-Warning "Couldn't retrieve firewall profiles"
+
+            }
+
 
         } # try catch firewall
             
@@ -1209,7 +1245,17 @@ begin {
 
         # Updates
         try {
-            $updates = Get-PendingUpdate -ErrorAction Stop
+            
+            $UpdatesJob = start-job -scriptblock $scriptblockUpdates -ErrorAction Stop
+            wait-job $UpdatesJob -timeout 120 | Out-Null
+        
+            if ($UpdatesJob.state -like "Running") {
+                Write-Warning -Message "[PROCESS] $Target updates search timeout" 
+                stop-job $UpdatesJob
+            }
+            else {
+                $updates = Receive-job $UpdatesJob
+            } # else if
 
         }
         catch {
@@ -1289,10 +1335,14 @@ process {
         Write-Log -Path $LogPath -Message "[PROCESS] Folder $FinalPath was created" -Type INFO
     }
     
+    $s = 0
+    $ServersAmount = $ComputerName.Count
     # Analyze computers
     Foreach ($Target in $ComputerName) {
         try {
-		
+
+            $s ++
+            Write-Progress -Activity 'Analyzing Servers' -Status "Server: $Target ($s - $ServersAmount)" -PercentComplete ($s / $ServersAmount * 100) 
             $Target = $Target.ToUpper()
 
             # execute script block
@@ -1321,18 +1371,20 @@ process {
             Write-Log -Message "[PROCESS] Checking free space of disks" -Type INFO -Path $LogPath -Append
             Foreach ($objDisk in $Data.colDisks) {
                 if ($ObjDisk.size -gt 0) {
+                    if ($objDisk.filesystem -eq 'NTFS') {
 
-                    $Percent = [math]::round(((($objDisk.FreeSpace / 1073741824) / ($objDisk.Size / 1073741824)) * 100))
-                    
-                    if ($Percent -lt 30) {
+                        $Percent = [math]::round(((($objDisk.FreeSpace / 1073741824) / ($objDisk.Size / 1073741824)) * 100))
                         
-                        $ObjectDisk = New-ItemTest -Servicio 'Sistema Operativo' -Item 'Matriz de Discos' -Servidor $Target -Detalles "$($objDisk.DeviceID) $Percent%"
-                        
-                        Write-Log -Message "[PROCESS] Adding disk free space check" -Type INFO -Path $LogPath -Append
-
-                        $tests.Add($ObjectDisk)
-                        
-                    } # if percent
+                        if ($Percent -lt 30) {
+                            
+                            $ObjectDisk = New-ItemTest -Servicio 'Sistema Operativo' -Item 'Matriz de Discos' -Servidor $Target -Detalles "$($objDisk.DeviceID) $Percent%"
+                            
+                            Write-Log -Message "[PROCESS] Adding disk free space check" -Type INFO -Path $LogPath -Append
+                            
+                            $tests.Add($ObjectDisk)
+                            
+                        } # if percent
+                    } # file system
                 } # if disk
                 
             } # foreach
@@ -1362,14 +1414,13 @@ process {
             } # if warning events
             
             # Active Directory checks
-            # create txt files Domain controller
             if ($Data.ComputerRole -eq "domain controller") {
                 
                 # Testing Time syncronization
                 
                 # clear variable
                 $failedTime = $Null
-                if (!($null -in @($Data.PDC, $Data.Forest, $Data.Domain, $Data.Time, $Data.PDCRoot))) {
+                if ($null -ne $Data.PDC -and $null -ne $Data.Forest -and $null -ne $Data.Domain -and $null -ne $Data.Time -and $null -ne $Data.PDCRoot) {
 
                     if ($Data.PDC -match $target) {
                         
@@ -1472,10 +1523,10 @@ process {
             # firewall
             if ($Data.Firewall.count -gt 0) {
                 Foreach ($firewallProfile in $Data.Firewall) {
-                    if ($firewallProfile.enabled -eq $False -or $firewallProfile.enabled -eq 'False') {
+                    if ([System.Convert]::ToBoolean($firewallProfile.enabled) -eq $False ) {
                         $ObjectFWProfile = New-ItemTest -Servicio 'Sistema Operativo' -Item 'Firewall de Windows'  -Servidor $Target -Detalles "El perfil $($firewallprofile.name) esta deshabilitado."
                         $tests.Add($ObjectFWProfile)
-                        Write-Log -Message "[PROCESS] Profile $($firewall.name) deshabilitado" -Append -Path $LogPath -Type INFO
+                        Write-Log -Message "[PROCESS] Profile $($firewallProfile.name) deshabilitado" -Append -Path $LogPath -Type INFO
                     } # profiles
                 } # foreach
             } # firewall
@@ -1506,7 +1557,7 @@ process {
                         else {
                             if ($integratedService.Name -eq 'Time Synchronization' -and $Data.ComputerRole -match 'domain controller|member') {
                                 Write-Log -Path $LogPath -Message '[PROCESS] VM DC has time synchronization enabled.' -Type INFO -Append
-                                $ObjectVMTime = New-ItemTest -Servicio 'Hiper-V' -Item 'Servicios de Integracion' -Servidor $Target -Detalles "La maquina virtual $($vm.name) tiene habilitado el servicio $($integratedService.Name). El servicio deberia estar deshabilitado."
+                                $ObjectVMTime = New-ItemTest -Servicio 'Hyper-V' -Item 'Servicios de Integracion' -Servidor $Target -Detalles "La maquina virtual $($vm.name) tiene habilitado el servicio $($integratedService.Name). El servicio deberia estar deshabilitado."
                                 $tests.Add($ObjectVMTime)
                             } # if 
 
@@ -1547,6 +1598,8 @@ process {
         }
         catch {
             Write-Log -Message "Couldn't connect to $Target" -Type WARN -Path $LogPath -Append
+            $objectOffline = New-ItemTest -Servicio 'Sistema Operativo' -Item 'Estado del servidor' -Servidor $Target -Detalles 'El equipo está apagado.'
+            $tests.Add($objectOffline)
         } # try catch
         
     } # Foreach computers targets
