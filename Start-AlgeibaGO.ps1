@@ -1008,12 +1008,21 @@ begin {
                 Write-Error $_
                 Write-Warning "Couldn't import module"
             } # try catch active directory module
-       
+
+            # Resolve internal and external DNS
+            $internalDNS = nslookup.exe $Forest.Name
+            if ($internalDNS -match "non-existent domain") {
+                $internalDNSStatus = $False
+
+            } # if
+                
+            $externalDNS = nslookup.exe 8.8.8.8
+            if ($externalDNS -match "non-existent domain") {
+                $externalDNSStatus = $False
+
+            } # if
             
         } # if domain controller
-
-        
-        
         
         # querys 
         function Get-InfoWmi {
@@ -1124,6 +1133,18 @@ begin {
             Write-Warning "Server is not a Hyper-V Host"
                 
         } # try catch hyper-V
+
+
+        # Firewall
+        try {
+
+            $FirewallProfiles = Get-NetFirewallProfile -ErrorAction Stop -Verbose:$false
+
+        }
+        catch {
+            Write-Warning "Couldn't retrieve firewall profiles"
+
+        } # try catch firewall
             
         # Programs
         try {
@@ -1162,7 +1183,7 @@ begin {
             catch {
                 Write-Warning "Couldn't retrieve sites"
 
-            }
+            } # try catch IIS sites
 
         }
         catch {
@@ -1173,16 +1194,18 @@ begin {
 
         # certificates
         try {
+
             $Certificate = Get-ChildItem -Recurse cert:\localmachine\my -ErrorAction Stop  |
                 Where-Object {$_.notafter -gt (Get-date) -and $_.notafter -lt (get-date).AddDays(60) } |
                 Select-Object friendlyname, Subject, Issuer, notAfter
-            
+
         }
         catch {
             Write-Error $_
             Write-Warning  "Couldn't retrieve certificates"
 
         } # try catch certificates
+
 
         # Updates
         try {
@@ -1226,6 +1249,9 @@ begin {
             Sites                = $Sites 
             Certificate          = $Certificate
             VM                   = $VM
+            Firewall             = $FirewallProfiles
+            ExternalDNSStatus    = $externalDNSStatus
+            InternalDNSStatus    = $internalDNSStatus
         } # property
         
         $Object = New-Object psobject -Property $Property   
@@ -1306,8 +1332,8 @@ process {
 
                         $tests.Add($ObjectDisk)
                         
-                    } # if
-                }
+                    } # if percent
+                } # if disk
                 
             } # foreach
             
@@ -1355,7 +1381,7 @@ process {
                         }
                         elseif (!($data.Time -match $Data.PDCRoot -and $null -ne $Data.PDCRoot )) {
                             $failedTime = "El servidor no sincroniza con el DC PDC del dominio root ($($Data.Forest)). Sincroniza con $($Data.Time)"
-                        }                 
+                        } # if elseif
                         
                     }
                     else {
@@ -1373,7 +1399,7 @@ process {
                         $ObjectTime = New-ItemTest -Servicio 'Active Directory' -Item 'Sincronización de hora' -Servidor $Target -Detalles $failedTime 
                         $tests.Add($ObjectTime)
                         Write-Log -Message "[PROCESS] Adding error sync time to report" -Path $LogPath -Type INFO -Append
-                    }
+                    } # if failed time
                     
                     $DcDiagTest = 'NetLogons', 'Replications', 'Services', 'Advertising', 'FsmoCheck'
 
@@ -1392,6 +1418,20 @@ process {
                         
                     } #  services 
                     
+                    # DNS
+                    if ($Data.InternalDNSStatus -eq $False) {
+                        $ObjectInternalDNS = New-ItemTest -Servicio 'DNS' -Item 'Resolucion interna' -Servidor $Target -Detalles 'No se resolvio registros internos.'
+                        $tests.Add($ObjectInternalDNS)
+                        Write-Log -Message "[PROCESS] internal dns resolution failed" -Append -Path $LogPath -Type INFO
+                    } # if internal
+                    
+                    if ($Data.ExternalDNSStatus -eq $False) {
+                        $ObjectExternalDNS = New-ItemTest -Servicio 'DNS' -Item 'Resolucion interna' -Servidor $Target -Detalles 'No se resolvio registros externos.'
+                        $tests.Add($ObjectExternalDNS)
+                        Write-Log -Message "[PROCESS] external dns resolution failed" -Append -Path $LogPath -Type INFO
+                    } # if external
+
+                    # dc diag  
                     Foreach ($diag in ($DcDiagTest)) {
                         $ValueDCDiag = Test-Service -Test $diag -ComputerName $Target -LogPath $LogPath
                         
@@ -1404,13 +1444,11 @@ process {
                         
                     } #  services 
                     
-                    
                 } # if domain controllers 
                 else {
                     Write-Log -Type WARN -Message "Active directory Module no installed on DC" -Path $LogPath -Append
                 }
             } # domain controller
-
 
             # IIS checks
             Foreach ($Site in $Data.Sites) {
@@ -1426,13 +1464,22 @@ process {
             # Certificates
             if (($Data.Certificado | Measure-Object | Select-Object -ExpandProperty Count ) -gt 0  ) {
                 Foreach ($Certificate in $Data.Certificate) {
-                    $ObjectCert = New-ItemTest -Servicio "Sistema Operativo" -Item  "Certificados" -Servidor $Target -Detalles "El certificado $($Data.Certificate.FriendlyName) expira el dia $($Data.Certificate.NotAfter.toString('dd/MM/yyyy'))"
-                    $Tests.Add($ObjectCert)
+                    $ObjectCert = New-ItemTest -Servicio "Sistema Operativo" -Item  "Certificados" -Servidor $Target -Detalles "El certificado $($Data.Certificate.FriendlyName) expira el dia $($Data.Certificate.NotAfter.toString('dd/MM/yyyy'))" $Tests.Add($ObjectCert)
                     Write-Log -Message "[PROCESS] Certificado $($Data.Certificate.FriendlyName) added" -Append -Path $LogPath -Type INFO
                 }  # certificates
             } # if 
-
             
+            # firewall
+            if ($Data.Firewall.count -gt 0) {
+                Foreach ($firewallProfile in $Data.Firewall) {
+                    if ($firewallProfile.enabled -eq $False -or $firewallProfile.enabled -eq 'False') {
+                        $ObjectFWProfile = New-ItemTest -Servicio 'Sistema Operativo' -Item 'Firewall de Windows'  -Servidor $Target -Detalles "El perfil $($firewallprofile.name) esta deshabilitado."
+                        $tests.Add($ObjectFWProfile)
+                        Write-Log -Message "[PROCESS] Profile $($firewall.name) deshabilitado" -Append -Path $LogPath -Type INFO
+                    } # profiles
+                } # foreach
+            } # firewall
+
             #  Hyper-V
             if ($Data.VM.count -gt 0) {
                 
