@@ -1034,7 +1034,7 @@ begin {
                 Import-Module ActiveDirectory -ErrorAction Stop -Verbose:$False
                 $Forest = Get-ADForest
                 $PDCroot = (Get-ADForest).name | Get-ADDomain | Select-Object -ExpandProperty pdcemulator
-                $DomainDC = (Get-ADDomainController $env:computername -Server $env:computername).Domain
+                $DomainDC = (Get-ADDomainController $env:computername ).Domain
 
             }
             catch {
@@ -1626,7 +1626,13 @@ process {
 
                 if ($GetExpiredCert.count -gt 0) {
                     Foreach ($Certificate in $GetExpiredCert) {
-                        $ObjectCert = New-ItemTest -Servicio "Sistema Operativo" -Item  "Certificados" -Servidor $Target -Detalles "El certificado $($Certificate.FriendlyName) expira el dia $($Certificate.NotAfter.toString('dd/MM/yyyy'))" -State WARN
+                        if ($Certificate.friendlyname -eq $Null -or $Certificate.friendlyname -eq "") {
+                            $CertName = $Certificate.Subject -replace "CN=([\w\.\-n]+),[\w\.,\n\s-=]+", '$1'
+                        }
+                        else {
+                            $CertName = $Certificate.FriendlyName
+                        }
+                        $ObjectCert = New-ItemTest -Servicio "Sistema Operativo" -Item  "Certificados" -Servidor $Target -Detalles "El certificado $CertName expira el dia $($Certificate.NotAfter.toString('dd/MM/yyyy'))" -State WARN
                         $tests.Add($ObjectCert)
                         Write-Log -Message "[PROCESS] Certificado $($Certificate.FriendlyName) added" -Append -Path $LogPath -Type INFO
                     }  # foreach certificates
