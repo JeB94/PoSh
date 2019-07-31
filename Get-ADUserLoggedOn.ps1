@@ -33,7 +33,9 @@ param (
         ValueFromPipeline,
         ValueFromPipelineByPropertyName)]
     [Alias('SamAccountName')]
-    [String[]]$Identity,
+    [String[]]
+    $Identity,
+
     $SearchBase
 )
 
@@ -42,7 +44,9 @@ process {
 
     $Propertys = @{ Filter = 'enabled -eq "True"'  }
 
-    IF ($SearchBase) { $Propertys.SearchBase = $SearchBase  }
+    IF ($PSBoundParameters.ContainsKey('SearchBase')) {
+        $Propertys.SearchBase = $SearchBase  
+    }
 
     Get-ADComputer @Propertys | ForEach-Object {
 
@@ -59,7 +63,8 @@ process {
                     break 
                 } # if
             } # foreach identity
-        } catch {
+        }
+        catch {
             Write-Warning "Couldn't connect to $Computer" 
         }
     } # foreach
