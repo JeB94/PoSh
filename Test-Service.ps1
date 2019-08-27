@@ -22,7 +22,8 @@ WorkFlow Test-Service {
                 'rasman', 'rasauto', 'wlms', 'wbiosrvc',
                 'wuauserv', 'tiledatamodelsvc', 'tbs', 'gisvc',
                 'CDPSvc', 'msdtc', 'IaasVmProvider', 'bits', 'TrustedInstaller',
-                'MSExchangeNotificationsBroker', 'DbgSvc', 'ShellHWDetection')
+                'MSExchangeNotificationsBroker', 'DbgSvc', 'ShellHWDetection',
+                'PrintNotify', 'RdSessMgr', 'gpsvc','ds_agent','ntrtscan')
                 
             try {
                 # get automatic services not excluded
